@@ -19,6 +19,7 @@ const {
   reagendarAgendamento,
 } = require("./controllers/gerenciamentoController");
 const logger = require("./utils/logger");
+const mensagens = require("./utils/mensagensUsuario");
 
 const app = express();
 const port = 3000;
@@ -126,8 +127,7 @@ app.post("/webhook", async (req, res, next) => {
           if (["sim", "confirmar"].some((k) => msgLower.includes(k))) {
             intent = "confirmar_reagendamento";
           } else if (["não", "cancelar"].some((k) => msgLower.includes(k))) {
-            resposta =
-              "Reagendamento cancelado. Deseja escolher outro horário?";
+            resposta = mensagens.REAGENDAMENTO_CANCELADO;
             estadoAgendamentoPendente.confirmationStep =
               "awaiting_reagendamento_datahora";
             agendamentosPendentes.set(from, estadoAgendamentoPendente);
@@ -153,8 +153,7 @@ app.post("/webhook", async (req, res, next) => {
             !agendamentoPendente ||
             agendamentoPendente.confirmationStep !== "confirmar_cancelamento"
           ) {
-            resposta =
-              "Nenhum cancelamento em andamento. Quer cancelar um agendamento?";
+            resposta = mensagens.NENHUM_CANCELAMENTO;
             agendamentosPendentes.delete(from);
             processamentoConcluido = true;
             break;
@@ -186,8 +185,7 @@ app.post("/webhook", async (req, res, next) => {
 
               if (!result || typeof result.success !== "boolean") {
                 logger.error("Formato de result inválido:", result);
-                resposta =
-                  "Ops, algo deu errado ao processar o cancelamento. Tente novamente mais tarde.";
+                resposta = mensagens.ERRO_PROCESSAR_CANCELAMENTO;
                 agendamentosPendentes.delete(from);
                 processamentoConcluido = true;
                 break;
@@ -197,7 +195,7 @@ app.post("/webhook", async (req, res, next) => {
                 logger.info("Falha no cancelamento:", result.message);
                 resposta =
                   result.message ||
-                  "Ops, algo deu errado ao cancelar o agendamento. Por favor, tente novamente.";
+                  mensagens.ERRO_CANCELAR_AGENDAMENTO;
                 resposta +=
                   "\nSe o problema persistir, entre em contato conosco diretamente para obter ajuda.";
                 agendamentosPendentes.delete(from);
@@ -210,13 +208,12 @@ app.post("/webhook", async (req, res, next) => {
               processamentoConcluido = true;
             } catch (error) {
               logger.error("Erro ao processar cancelamento:", error);
-              resposta =
-                "Ops, algo deu errado ao processar o cancelamento. Tente novamente mais tarde.";
+              resposta = mensagens.ERRO_PROCESSAR_CANCELAMENTO;
               agendamentosPendentes.delete(from);
               processamentoConcluido = true;
             }
           } else {
-            resposta = "Cancelamento não confirmado. Deseja fazer algo mais?";
+            resposta = mensagens.CANCELAMENTO_NAO_CONFIRMADO;
             agendamentosPendentes.delete(from);
             processamentoConcluido = true;
           }
@@ -228,16 +225,14 @@ app.post("/webhook", async (req, res, next) => {
     if (!processamentoConcluido) {
       switch (intent) {
         case "welcome_intent":
-          resposta =
-            "Opa, seja bem-vindo à Barbearia!\nQual serviço deseja agendar?\nCorte\nBarba\n\nSe quiser cancelar digite: 'Cancelar'";
+          resposta = mensagens.BEM_VINDO;
           agendamentosPendentes.delete(from); // Garante que nenhum estado antigo atrapalhe
           break;
 
         case "escolha_servico": {
           const servicoNome = parametros?.servico?.stringValue;
           if (!servicoNome) {
-            resposta =
-              "Não entendi qual serviço você deseja. Escolha entre Corte, Barba ou Sobrancelha.";
+            resposta = mensagens.SERVICO_NAO_ENTENDIDO;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -246,7 +241,7 @@ app.post("/webhook", async (req, res, next) => {
           const servicoInfo = SERVICOS_VALIDOS[servicoNormalizado];
 
           if (!servicoInfo) {
-            resposta = `Desculpe, o serviço "${servicoNome}" não foi reconhecido. Escolha entre Corte, Barba ou Sobrancelha.`;
+            resposta = mensagens.servicoNaoReconhecido(servicoNome);
             agendamentosPendentes.delete(from);
             break;
           }
@@ -272,8 +267,7 @@ app.post("/webhook", async (req, res, next) => {
           const horarios = await listarTodosHorariosDisponiveis();
           // Verifica se há horários ou se a busca falhou
           if (!horarios || !horarios.length) {
-            resposta =
-              "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
+            resposta = mensagens.SEM_HORARIOS_DISPONIVEIS;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -299,16 +293,14 @@ app.post("/webhook", async (req, res, next) => {
             !Array.isArray(agendamentoPendente.servicoIds) ||
             !agendamentoPendente.servicoIds.length
           ) {
-            resposta =
-              "Escolha um serviço antes (Corte, Barba ou Sobrancelha). Qual prefere?";
+            resposta = mensagens.ESCOLHA_SERVICO_PRIMEIRO;
             agendamentosPendentes.delete(from);
             break;
           }
 
           const horarios = await listarTodosHorariosDisponiveis();
           if (!horarios || !horarios.length) {
-            resposta =
-              "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
+            resposta = mensagens.SEM_HORARIOS_DISPONIVEIS;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -428,8 +420,7 @@ app.post("/webhook", async (req, res, next) => {
               agendamentoPendente.confirmationStep !==
                 "awaiting_new_name_confirmation") // Permite confirmar após digitar um novo nome
           ) {
-            resposta =
-              "Nenhum agendamento em andamento ou etapa incorreta. Quer agendar um serviço?";
+            resposta = mensagens.NAO_AGENDAMENTO_ANDAMENTO;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -443,9 +434,7 @@ app.post("/webhook", async (req, res, next) => {
           });
 
           if (!result.success) {
-            resposta =
-              result.message ||
-              "Ops, algo deu errado ao agendar. Tente novamente.";
+            resposta = result.message || mensagens.ERRO_AGENDAR;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -466,8 +455,7 @@ app.post("/webhook", async (req, res, next) => {
             !agendamentoPendente ||
             agendamentoPendente.confirmationStep !== "awaiting_name_choice"
           ) {
-            resposta =
-              "Não estou esperando um nome agora. Por favor, comece o agendamento novamente.";
+            resposta = mensagens.NAO_ESPERANDO_NOME;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -487,16 +475,14 @@ app.post("/webhook", async (req, res, next) => {
             !agendamentoPendente ||
             agendamentoPendente.confirmationStep !== "awaiting_new_name"
           ) {
-            resposta =
-              "Não estou esperando um nome agora. Por favor, comece o agendamento novamente.";
+            resposta = mensagens.NAO_ESPERANDO_NOME;
             agendamentosPendentes.delete(from);
             break;
           }
 
           const novoNome = msg.trim();
           if (novoNome.length < 2) {
-            resposta =
-              "Por favor, me diga um nome válido (com pelo menos 2 caracteres).";
+            resposta = mensagens.NOME_INVALIDO;
             break;
           }
 
@@ -521,8 +507,7 @@ app.post("/webhook", async (req, res, next) => {
               confirmationStep: "awaiting_name_choice", // Volta para a etapa de escolha para confirmar o agendamento com o novo nome
             });
           } else {
-            resposta =
-              "Não consegui atualizar seu nome. Por favor, tente novamente.";
+            resposta = mensagens.ERRO_ATUALIZAR_NOME;
           }
           break;
         }
@@ -537,14 +522,13 @@ app.post("/webhook", async (req, res, next) => {
               "ERRO: Erro ao listar agendamentos para reagendamento:",
               error
             );
-            resposta =
-              "Ops, não conseguimos verificar seus agendamentos. Tente novamente mais tarde.";
+            resposta = mensagens.ERRO_VERIFICAR_AGENDAMENTOS;
             agendamentosPendentes.delete(from);
             break;
           }
 
           if (!agendamentosAtivos.length) {
-            resposta = "Você não tem agendamentos ativos para reagendar.";
+            resposta = mensagens.SEM_AGENDAMENTOS_REAGENDAR;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -585,8 +569,7 @@ app.post("/webhook", async (req, res, next) => {
               "selecionar_reagendamento" ||
             !agendamentoPendente.agendamentosAtivos
           ) {
-            resposta =
-              "Nenhum reagendamento em andamento. Quer reagendar um agendamento?";
+            resposta = mensagens.NENHUM_REAGENDAMENTO;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -598,8 +581,7 @@ app.post("/webhook", async (req, res, next) => {
           if (!isNaN(escolhaNumero) && agendamentoEscolhido) {
             const horarios = await listarTodosHorariosDisponiveis();
             if (!horarios || !horarios.length) {
-              resposta =
-                "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
+              resposta = mensagens.SEM_HORARIOS_DISPONIVEIS;
               agendamentosPendentes.delete(from);
               break;
             }
@@ -636,8 +618,7 @@ app.post("/webhook", async (req, res, next) => {
             agendamentoPendente.confirmationStep !==
               "confirmar_inicio_reagendamento"
           ) {
-            resposta =
-              "Nenhum reagendamento em andamento. Quer reagendar um agendamento?";
+            resposta = mensagens.NENHUM_REAGENDAMENTO;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -649,8 +630,7 @@ app.post("/webhook", async (req, res, next) => {
           if (isConfirmation) {
             const horarios = await listarTodosHorariosDisponiveis();
             if (!horarios || !horarios.length) {
-              resposta =
-                "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
+              resposta = mensagens.SEM_HORARIOS_DISPONIVEIS;
               agendamentosPendentes.delete(from);
               break;
             }
@@ -666,7 +646,7 @@ app.post("/webhook", async (req, res, next) => {
               "awaiting_reagendamento_datahora";
             agendamentosPendentes.set(from, agendamentoPendente);
           } else {
-            resposta = "Reagendamento cancelado. Deseja fazer algo mais?";
+            resposta = mensagens.REAGENDAMENTO_CANCELADO;
             agendamentosPendentes.delete(from);
           }
           break;
@@ -679,16 +659,14 @@ app.post("/webhook", async (req, res, next) => {
             agendamentoPendente.confirmationStep !==
               "awaiting_reagendamento_datahora"
           ) {
-            resposta =
-              "Nenhum reagendamento em andamento. Quer reagendar um agendamento?";
+            resposta = mensagens.NENHUM_REAGENDAMENTO;
             agendamentosPendentes.delete(from);
             break;
           }
 
           const horarios = await listarTodosHorariosDisponiveis();
           if (!horarios || !horarios.length) {
-            resposta =
-              "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
+            resposta = mensagens.SEM_HORARIOS_DISPONIVEIS;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -798,8 +776,7 @@ app.post("/webhook", async (req, res, next) => {
             agendamentoPendente.confirmationStep !==
               "awaiting_reagendamento_confirmation"
           ) {
-            resposta =
-              "Nenhum reagendamento em andamento. Quer reagendar um agendamento?";
+            resposta = mensagens.NENHUM_REAGENDAMENTO;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -817,7 +794,7 @@ app.post("/webhook", async (req, res, next) => {
             if (!result.success) {
               resposta =
                 result.message ||
-                "Ops, algo deu errado ao reagendar. Tente novamente.";
+                mensagens.ERRO_REAGENDAR;
               agendamentosPendentes.delete(from);
               break;
             }
@@ -828,8 +805,7 @@ app.post("/webhook", async (req, res, next) => {
             resposta = `✅ Agendamento reagendado para *${agendamentoPendente.servico}* em *${horarioFormatado}*!`;
             agendamentosPendentes.delete(from);
           } else {
-            resposta =
-              "Reagendamento cancelado. Deseja escolher outro horário?";
+            resposta = mensagens.REAGENDAMENTO_CANCELADO;
             agendamentoPendente.confirmationStep =
               "awaiting_reagendamento_datahora"; // Permite que o usuário escolha outro horário imediatamente
             agendamentosPendentes.set(from, agendamentoPendente);
@@ -911,14 +887,13 @@ app.post("/webhook", async (req, res, next) => {
               "ERRO: Erro ao listar agendamentos para cancelamento:",
               error
             );
-            resposta =
-              "Ops, não conseguimos verificar seus agendamentos. Tente novamente mais tarde.";
+            resposta = mensagens.ERRO_VERIFICAR_AGENDAMENTOS;
             agendamentosPendentes.delete(from);
             break;
           }
 
           if (!agendamentosAtivos.length) {
-            resposta = "Você não tem agendamentos ativos para cancelar.";
+            resposta = mensagens.SEM_AGENDAMENTOS_CANCELAR;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -959,8 +934,7 @@ app.post("/webhook", async (req, res, next) => {
               "selecionar_cancelamento" ||
             !agendamentoPendente.agendamentosAtivos
           ) {
-            resposta =
-              "Nenhum cancelamento em andamento. Quer cancelar um agendamento?";
+            resposta = mensagens.NENHUM_CANCELAMENTO;
             agendamentosPendentes.delete(from);
             break;
           }
@@ -989,8 +963,7 @@ app.post("/webhook", async (req, res, next) => {
 
         // Tratamento para a intent 'confirmar_agendamento' (caso seja detectada de forma inesperada)
         case "confirmar_agendamento":
-          resposta =
-            "Desculpe, não entendi o que você quer confirmar. Por favor, comece o agendamento novamente.";
+          resposta = mensagens.CONFIRMAR_DESCONHECIDO;
           agendamentosPendentes.delete(from);
           break;
 
@@ -999,7 +972,7 @@ app.post("/webhook", async (req, res, next) => {
           // ou se o estado não foi tratado pelas lógicas acima, usa o fulfillmentText ou uma mensagem genérica.
           resposta =
             response.queryResult.fulfillmentText ||
-            "Desculpe, não entendi. Pode repetir, por favor?";
+            mensagens.NAO_ENTENDI;
           if (!estadoAgendamentoPendente) {
             // Limpa o estado se não houver um fluxo ativo
             agendamentosPendentes.delete(from);
@@ -1020,7 +993,7 @@ app.post("/webhook", async (req, res, next) => {
 app.use((err, req, res, next) => {
   logger.error('Unhandled error:', err);
   const status = err.status || 500;
-  const message = err.message || 'Ops, algo deu errado. Tente novamente mais tarde.';
+  const message = err.message || mensagens.ERRO_GERAL;
   res.status(status).json({ error: message });
 });
 
