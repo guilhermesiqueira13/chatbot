@@ -32,8 +32,7 @@ const agendamentosPendentes = new Map();
 router.use(bodyParser.urlencoded({ extended: false }));
 router.use(bodyParser.json());
 
-// Usa utilitário de formatação em pt-BR
-const formatarData = formatarDataHorarioBr;
+// Utilitário para formatar datas e horários no padrão brasileiro
 
 /**
  * Encontra o horário disponível mais próximo a uma data/hora solicitada.
@@ -366,7 +365,7 @@ router.post("/webhook", async (req, res) => {
           resposta = `Ótimo! Você escolheu *${agendamentoPendente.servicos.join(
             " e "
           )}*.\nHorários disponíveis:\n\n${horarios
-            .map((h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`)
+            .map((h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`)
             .join(
               "\n"
             )}\n\nDigite o número do horário desejado ou informe um dia e horário (exemplo: Sexta 10:00).`;
@@ -462,7 +461,7 @@ router.post("/webhook", async (req, res) => {
                   horarios
                 );
                 if (horarioMaisProximo) {
-                  resposta = `O horário *${diaDaSemanaFormatado} às ${horaFormatada}* não está disponível. O mais próximo é *${formatarData(
+                  resposta = `O horário *${diaDaSemanaFormatado} às ${horaFormatada}* não está disponível. O mais próximo é *${formatarDataHorarioBr(
                     horarioMaisProximo.dia_horario
                   )}*. Deseja escolher este? Responda 'Sim' ou escolha outro horário.`;
                   agendamentosPendentes.set(from, {
@@ -473,7 +472,7 @@ router.post("/webhook", async (req, res) => {
                   break;
                 } else {
                   resposta = `Nenhum horário disponível próximo a *${diaDaSemanaFormatado} às ${horaFormatada}*. Escolha outro:\n\n${horarios
-                    .map((h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`)
+                    .map((h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`)
                     .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
                   break;
                 }
@@ -481,7 +480,7 @@ router.post("/webhook", async (req, res) => {
             } else {
               resposta = `Formato inválido. Por favor, escolha um número da lista ou informe um dia e horário (exemplo: Sexta 10:00).\n\nHorários disponíveis:\n\n${horarios
                 .map(
-                  (h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`
+                  (h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`
                 )
                 .join("\n")}`;
               break;
@@ -498,7 +497,7 @@ router.post("/webhook", async (req, res) => {
           agendamentoPendente.confirmationStep = "awaiting_name_choice";
           agendamentosPendentes.set(from, agendamentoPendente);
 
-          const horarioFormatado = formatarData(diaHorario);
+          const horarioFormatado = formatarDataHorarioBr(diaHorario);
           resposta = `Você escolheu *${agendamentoPendente.servicos.join()}* para *${horarioFormatado}*.\nO nome que usaremos para o agendamento é *${
             cliente.nome
           }*.\nGostaria de manter este nome ou informar outro? (Responda 'Sim' ou 'Trocar')`;
@@ -535,7 +534,7 @@ router.post("/webhook", async (req, res) => {
             break;
           }
 
-          const horarioFormatado = formatarData(
+          const horarioFormatado = formatarDataHorarioBr(
             agendamentoPendente.dia_horario
           );
           resposta = `✅ Agendamento confirmado para *${agendamentoPendente.servicos.join()}* na *${horarioFormatado}*\nNo nome de: *${
@@ -595,7 +594,7 @@ router.post("/webhook", async (req, res) => {
             cliente = clienteAtualizado;
 
             agendamentoPendente.nomeSugerido = novoNome;
-            const horarioFormatado = formatarData(
+            const horarioFormatado = formatarDataHorarioBr(
               agendamentoPendente.dia_horario
             );
             resposta = `Nome atualizado para *${novoNome}*.\nConfirma o agendamento de *${agendamentoPendente.servicos.join(
@@ -636,7 +635,7 @@ router.post("/webhook", async (req, res) => {
 
           if (agendamentosAtivos.length === 1) {
             const agendamento = agendamentosAtivos[0];
-            const horarioFormatado = formatarData(agendamento.dia_horario);
+            const horarioFormatado = formatarDataHorarioBr(agendamento.dia_horario);
             resposta = `Você tem um agendamento para *${agendamento.servico}* em *${horarioFormatado}*. Deseja reagendar? Responda 'Sim' ou 'Não'.`;
             agendamentosPendentes.set(from, {
               clienteId: cliente.id,
@@ -647,7 +646,7 @@ router.post("/webhook", async (req, res) => {
           } else {
             resposta = `Você tem ${agendamentosAtivos.length} agendamentos ativos. Qual deseja reagendar?\n\n`;
             agendamentosAtivos.forEach((agendamento, index) => {
-              const horarioFormatado = formatarData(agendamento.dia_horario);
+              const horarioFormatado = formatarDataHorarioBr(agendamento.dia_horario);
               resposta += `${index + 1}. *${
                 agendamento.servico
               }* em *${horarioFormatado}*\n`;
@@ -691,11 +690,11 @@ router.post("/webhook", async (req, res) => {
 
             resposta = `Beleza! Você escolheu reagendar o agendamento de *${
               agendamentoEscolhido.servico
-            }* em *${formatarData(
+            }* em *${formatarDataHorarioBr(
               agendamentoEscolhido.dia_horario
             )}*. Escolha um novo horário:\n\n${horarios
               .map(
-                (h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`
+                (h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`
               )
               .join(
                 "\n"
@@ -742,7 +741,7 @@ router.post("/webhook", async (req, res) => {
 
             resposta = `Beleza! Escolha um novo horário:\n\n${horarios
               .map(
-                (h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`
+                (h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`
               )
               .join(
                 "\n"
@@ -840,7 +839,7 @@ router.post("/webhook", async (req, res) => {
                   horarios
                 );
                 if (horarioMaisProximo) {
-                  resposta = `O horário *${diaDaSemanaFormatado} às ${horaFormatada}* não está disponível. O mais próximo é *${formatarData(
+                  resposta = `O horário *${diaDaSemanaFormatado} às ${horaFormatada}* não está disponível. O mais próximo é *${formatarDataHorarioBr(
                     horarioMaisProximo.dia_horario
                   )}*. Deseja escolher este? Responda 'Sim' ou escolha outro horário.`;
                   agendamentosPendentes.set(from, {
@@ -851,7 +850,7 @@ router.post("/webhook", async (req, res) => {
                   break;
                 } else {
                   resposta = `Nenhum horário disponível próximo a *${diaDaSemanaFormatado} às ${horaFormatada}*. Escolha outro:\n\n${horarios
-                    .map((h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`)
+                    .map((h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`)
                     .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
                   break;
                 }
@@ -859,7 +858,7 @@ router.post("/webhook", async (req, res) => {
             } else {
               resposta = `Formato inválido. Escolha um horário da lista:\n\n${horarios
                 .map(
-                  (h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`
+                  (h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`
                 )
                 .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
               break;
@@ -871,7 +870,7 @@ router.post("/webhook", async (req, res) => {
             "awaiting_reagendamento_confirmation";
           agendamentosPendentes.set(from, agendamentoPendente);
 
-          const horarioFormatado = formatarData(diaHorario);
+          const horarioFormatado = formatarDataHorarioBr(diaHorario);
           resposta = `Você escolheu reagendar *${agendamentoPendente.servico}* para *${horarioFormatado}*. Confirma? Responda 'Sim' ou 'Não'.`;
           break;
         }
@@ -907,7 +906,7 @@ router.post("/webhook", async (req, res) => {
               break;
             }
 
-            const horarioFormatado = formatarData(
+            const horarioFormatado = formatarDataHorarioBr(
               agendamentoPendente.dia_horario
             );
             resposta = `✅ Agendamento reagendado para *${agendamentoPendente.servico}* em *${horarioFormatado}*!`;
@@ -947,7 +946,7 @@ router.post("/webhook", async (req, res) => {
               // Se for um reagendamento
               agendamentoPendente.confirmationStep =
                 "awaiting_reagendamento_confirmation";
-              const horarioFormatado = formatarData(
+              const horarioFormatado = formatarDataHorarioBr(
                 agendamentoPendente.dia_horario
               );
               resposta = `Você escolheu reagendar *${agendamentoPendente.servico}* para *${horarioFormatado}*. Confirma? Responda 'Sim' ou 'Não'.`;
@@ -957,7 +956,7 @@ router.post("/webhook", async (req, res) => {
               // 'cliente' já está no escopo global do webhook com os dados atualizados
               agendamentoPendente.clienteId = cliente.id;
               agendamentoPendente.nomeSugerido = cliente.nome;
-              const horarioFormatado = formatarData(
+              const horarioFormatado = formatarDataHorarioBr(
                 agendamentoPendente.dia_horario
               );
               resposta = `Você escolheu *${agendamentoPendente.servicos.join(
@@ -972,7 +971,7 @@ router.post("/webhook", async (req, res) => {
             const horarios = await listarTodosHorariosDisponiveis();
             resposta = `Ok, escolha outro horário:\n\n${horarios
               .map(
-                (h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`
+                (h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`
               )
               .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
 
@@ -1010,7 +1009,7 @@ router.post("/webhook", async (req, res) => {
 
           if (agendamentosAtivos.length === 1) {
             const agendamento = agendamentosAtivos[0];
-            const horarioFormatado = formatarData(agendamento.dia_horario);
+            const horarioFormatado = formatarDataHorarioBr(agendamento.dia_horario);
             resposta = `Você tem um agendamento para *${agendamento.servico}* em *${horarioFormatado}*. Deseja cancelar? Responda 'Sim' ou 'Não'.`;
             agendamentosPendentes.set(from, {
               clienteId: cliente.id,
@@ -1021,7 +1020,7 @@ router.post("/webhook", async (req, res) => {
           } else {
             resposta = `Você tem ${agendamentosAtivos.length} agendamentos ativos. Qual deseja cancelar?\n\n`;
             agendamentosAtivos.forEach((agendamento, index) => {
-              const horarioFormatado = formatarData(agendamento.dia_horario);
+              const horarioFormatado = formatarDataHorarioBr(agendamento.dia_horario);
               resposta += `${index + 1}. *${
                 agendamento.servico
               }* em *${horarioFormatado}*\n`;
@@ -1055,7 +1054,7 @@ router.post("/webhook", async (req, res) => {
             agendamentoPendente.agendamentosAtivos[escolhaNumero];
 
           if (!isNaN(escolhaNumero) && agendamentoEscolhido) {
-            const horarioFormatado = formatarData(
+            const horarioFormatado = formatarDataHorarioBr(
               agendamentoEscolhido.dia_horario
             );
             resposta = `Você escolheu cancelar o agendamento de *${agendamentoEscolhido.servico}* em *${horarioFormatado}*. Confirma o cancelamento? Responda 'Sim' ou 'Não'.`;
