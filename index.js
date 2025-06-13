@@ -31,6 +31,12 @@ const agendamentosPendentes = new Map();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+const agendamentoRoutes = require("./routes/agendamentoRoutes");
+const clienteRoutes = require("./routes/clienteRoutes");
+
+app.use("/api/agendamento", agendamentoRoutes);
+app.use("/api/clientes", clienteRoutes);
+
 // Usa utilitário de formatação em pt-BR
 const formatarData = formatarDataHorarioBr;
 
