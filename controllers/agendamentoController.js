@@ -3,6 +3,11 @@ const {
   listarHorariosDisponiveis,
   criarAgendamento,
 } = require("../services/calendarService");
+const {
+  isValidServico,
+  isValidDataHora,
+} = require("../utils/validation");
+const { ValidationError } = require("../utils/errors");
 
 // Garante que a coluna google_event_id exista na tabela de agendamentos
 async function ensureGoogleEventIdColumn() {
@@ -17,6 +22,9 @@ async function ensureGoogleEventIdColumn() {
 }
 
 async function buscarHorariosDisponiveis(data) {
+  if (!isValidDataHora(data)) {
+    throw new ValidationError("Data inválida");
+  }
   try {
     const horarios = await listarHorariosDisponiveis(data);
     return horarios;
@@ -27,11 +35,17 @@ async function buscarHorariosDisponiveis(data) {
 }
 
 async function agendarServico({ clienteId, clienteNome, servicoNome, horario }) {
+  if (!clienteId || isNaN(parseInt(clienteId))) {
+    return { success: false, message: "ID do cliente inválido." };
+  }
+  if (!isValidServico(servicoNome)) {
+    return { success: false, message: "Serviço inválido." };
+  }
+  if (!isValidDataHora(horario)) {
+    return { success: false, message: "Data e hora inválidas." };
+  }
   try {
     await ensureGoogleEventIdColumn();
-    if (!clienteId || !horario) {
-      return { success: false, message: "Cliente ou horário inválido." };
-    }
 
     const evento = await criarAgendamento({
       cliente: clienteNome,

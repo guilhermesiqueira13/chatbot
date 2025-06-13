@@ -1,9 +1,20 @@
 const pool = require("../db");
+const {
+  isValidTelefone,
+  isValidNome,
+} = require("../utils/validation");
+const { ValidationError } = require("../utils/errors");
 
 // Encontra ou cria um cliente no banco de dados.
 // Se o cliente existir, ele é retornado. Se não, um novo é criado.
 // Tenta usar profileName do Twilio, se disponível.
 async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
+  if (!isValidTelefone(telefone)) {
+    throw new ValidationError("Telefone inválido");
+  }
+  if (profileName && !isValidNome(profileName)) {
+    throw new ValidationError("Nome inválido");
+  }
   let client;
   try {
     client = await pool.getConnection();
@@ -54,6 +65,9 @@ async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
 
 // Atualiza o nome de um cliente existente.
 async function atualizarNomeCliente(clienteId, novoNome) {
+  if (!isValidNome(novoNome)) {
+    throw new ValidationError("Nome inválido");
+  }
   let client;
   console.log("aqui");
 

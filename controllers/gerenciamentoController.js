@@ -4,6 +4,8 @@ const {
   cancelarAgendamento: cancelarEvento,
   criarAgendamento,
 } = require("../services/calendarService");
+const { isValidDataHora } = require("../utils/validation");
+const { ValidationError } = require("../utils/errors");
 
 async function cancelarAgendamento(agendamentoId, googleEventId) {
   const connection = await pool.getConnection();
@@ -52,6 +54,9 @@ async function cancelarAgendamento(agendamentoId, googleEventId) {
 
 // Resto do arquivo permanece igual
 async function listarAgendamentosAtivos(clienteId) {
+  if (!clienteId || isNaN(parseInt(clienteId))) {
+    throw new ValidationError("ID do cliente inválido");
+  }
   try {
     const [rows] = await pool.query(
       `SELECT a.id, a.google_event_id, a.horario, s.nome AS servico
@@ -69,6 +74,9 @@ async function listarAgendamentosAtivos(clienteId) {
 }
 
 async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
+  if (!isValidDataHora(novoHorario)) {
+    return { success: false, message: "Data e hora inválidas." };
+  }
   try {
     await pool.query("START TRANSACTION");
 
