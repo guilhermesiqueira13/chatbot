@@ -3,11 +3,12 @@ const bodyParser = require("body-parser");
 const dialogflow = require("@google-cloud/dialogflow");
 const { agendarServico } = require("./agendamentoController");
 const {
-  listarHorariosDisponiveis,
-  criarAgendamento,
-  cancelarAgendamento: cancelarEvento,
-} = require("../services/calendarService");
-const { formatarDataHorarioBr } = require("../utils/utils");
+  formatarDataHorarioBr,
+  encontrarHorarioProximo,
+  getDateFromWeekdayAndTime,
+  listarTodosHorariosDisponiveis,
+} = require("../utils/dataHelpers");
+const { normalizarServico } = require("../utils/stringHelpers");
 const {
   encontrarOuCriarCliente,
   atualizarNomeCliente,
@@ -35,45 +36,6 @@ router.use(bodyParser.json());
 
 // Utilitário para formatar datas e horários no padrão brasileiro
 
-/**
- * Encontra o horário disponível mais próximo a uma data/hora solicitada.
- * @param {string} horarioSolicitadoStr - String da data/hora solicitada (ISO 8601).
- * @param {Array<Object>} horariosDisponiveis - Lista de objetos de horários disponíveis.
- * @returns {Object|null} O objeto do horário mais próximo ou null se nenhum for encontrado.
- */
-function encontrarHorarioProximo(horarioSolicitadoStr, horariosDisponiveis) {
-  if (
-    !horarioSolicitadoStr ||
-    !horariosDisponiveis ||
-    !horariosDisponiveis.length
-  )
-    return null;
-  const solicitado = new Date(horarioSolicitadoStr);
-  if (isNaN(solicitado.getTime())) return null;
-
-  return horariosDisponiveis.reduce(
-    (maisProximo, horario) => {
-      const disponivel = new Date(horario.dia_horario);
-      if (isNaN(disponivel.getTime())) return maisProximo;
-      const diferenca = Math.abs(solicitado - disponivel);
-      if (diferenca < maisProximo.diferenca) {
-        return { horario, diferenca };
-      }
-      return maisProximo;
-    },
-    { horario: null, diferenca: Infinity }
-  ).horario;
-}
-
-/**
- * Normaliza o nome de um serviço para comparação.
- * @param {string} servicoNome - Nome do serviço.
- * @returns {string} Nome do serviço em minúsculas, sem espaços.
- */
-function normalizarServico(servicoNome) {
-  return servicoNome.toLowerCase().replace(/\s+/g, "");
-}
-
 // Mapeamento de serviços válidos e seus IDs no banco de dados
 const SERVICOS_VALIDOS = {
   corte: { id: 1, nome: "Corte" },
@@ -84,60 +46,7 @@ const SERVICOS_VALIDOS = {
   fazersobrancelha: { id: 3, nome: "Sobrancelha" },
 };
 
-/**
- * Calcula uma data futura com base no dia da semana e hora fornecidos.
- * Ajusta para a próxima semana se a data/hora já tiver passado no dia atual.
- * @param {string} diaSemanaStr - Nome do dia da semana (ex: "segunda").
- * @param {string} horaStr - Hora (ex: "10:00").
- * @returns {Date|null} Objeto Date correspondente ou null se inválido.
- */
-function getDateFromWeekdayAndTime(diaSemanaStr, horaStr) {
-  const diasDaSemana = [
-    "domingo",
-    "segunda-feira",
-    "terça-feira",
-    "quarta-feira",
-    "quinta-feira",
-    "sexta-feira",
-    "sábado",
-  ];
-  const diaSemanaIndex = diasDaSemana.findIndex((d) =>
-    d.includes(diaSemanaStr.replace("-feira", ""))
-  );
-  if (diaSemanaIndex === -1) return null;
 
-  const [hora, minuto = "00"] = horaStr.split(":");
-  const hoje = new Date();
-  let data = new Date(hoje);
-
-  const diferencaDias = (diaSemanaIndex - hoje.getDay() + 7) % 7;
-  data.setDate(hoje.getDate() + diferencaDias);
-
-  data.setHours(parseInt(hora, 10), parseInt(minuto, 10), 0, 0);
-
-  // Se a data e hora calculadas já passaram hoje, avança para a próxima semana
-  if (data < hoje && diferencaDias === 0) {
-    data.setDate(data.getDate() + 7);
-  }
-
-  return data;
-}
-
-// Lista horários disponíveis para os próximos 'dias' dias
-async function listarTodosHorariosDisponiveis(dias = 7) {
-  const horarios = [];
-  const hoje = new Date();
-  for (let i = 0; i < dias; i++) {
-    const data = new Date(hoje);
-    data.setDate(hoje.getDate() + i);
-    const dataStr = data.toISOString().slice(0, 10);
-    const horas = await listarHorariosDisponiveis(dataStr);
-    for (const hora of horas) {
-      horarios.push({ dia_horario: `${dataStr}T${hora}:00` });
-    }
-  }
-  return horarios;
-}
 
 // --- Rota Principal do Webhook ---
 router.post("/webhook", async (req, res) => {
