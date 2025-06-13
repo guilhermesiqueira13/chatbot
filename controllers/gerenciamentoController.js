@@ -6,6 +6,7 @@ const {
 } = require("../services/calendarService");
 const { isValidDataHora } = require("../utils/validation");
 const { ValidationError } = require("../utils/errors");
+const logger = require("../utils/logger");
 
 async function cancelarAgendamento(agendamentoId, googleEventId) {
   const connection = await pool.getConnection();
@@ -33,7 +34,7 @@ async function cancelarAgendamento(agendamentoId, googleEventId) {
     try {
       await cancelarEvento(eventId);
     } catch (e) {
-      console.error("Erro ao cancelar evento no Google Calendar:", e);
+      logger.error("Erro ao cancelar evento no Google Calendar:", e);
     }
 
     await connection.query('UPDATE agendamentos SET status = "cancelado" WHERE id = ?', [agendamentoId]);
@@ -44,7 +45,7 @@ async function cancelarAgendamento(agendamentoId, googleEventId) {
   } catch (error) {
     await connection.rollback();
     await connection.release();
-    console.error("Erro em cancelarAgendamento:", error);
+    logger.error("Erro em cancelarAgendamento:", error);
     return {
       success: false,
       message: "Erro interno ao cancelar o agendamento.",
@@ -68,7 +69,7 @@ async function listarAgendamentosAtivos(clienteId) {
     );
     return rows;
   } catch (error) {
-    console.error("Erro ao listar agendamentos ativos:", error);
+    logger.error("Erro ao listar agendamentos ativos:", error);
     throw new Error("Erro ao listar agendamentos ativos.");
   }
 }
@@ -99,7 +100,7 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
     try {
       await cancelarEvento(eventId);
     } catch (e) {
-      console.error("Erro ao cancelar evento antigo no Google Calendar:", e);
+      logger.error("Erro ao cancelar evento antigo no Google Calendar:", e);
     }
 
     const evento = await criarAgendamento({ cliente: "", servico: "", horario: novoHorario });
@@ -113,7 +114,7 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
     return { success: true };
   } catch (error) {
     await pool.query("ROLLBACK");
-    console.error("Erro ao reagendar:", error);
+    logger.error("Erro ao reagendar:", error);
     return {
       success: false,
       message: "Ops, algo deu errado ao reagendar. Tente novamente.",

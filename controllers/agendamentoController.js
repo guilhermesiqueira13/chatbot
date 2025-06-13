@@ -9,6 +9,7 @@ const {
 } = require("../utils/validation");
 const { ValidationError } = require("../utils/errors");
 
+const logger = require("../utils/logger");
 // Garante que a coluna google_event_id exista na tabela de agendamentos
 async function ensureGoogleEventIdColumn() {
   const [rows] = await pool.query(
@@ -29,7 +30,7 @@ async function buscarHorariosDisponiveis(data) {
     const horarios = await listarHorariosDisponiveis(data);
     return horarios;
   } catch (error) {
-    console.error("Erro ao buscar horários disponíveis:", error);
+    logger.error("Erro ao buscar horários disponíveis:", error);
     throw new Error("Erro ao buscar horários disponíveis.");
   }
 }
@@ -66,7 +67,7 @@ async function agendarServico({ clienteId, clienteNome, servicoNome, horario }) 
 
     return { success: true, agendamentoId, eventId: evento.id };
   } catch (error) {
-    console.error("Erro ao agendar serviço:", error);
+    logger.error("Erro ao agendar serviço:", error);
     return {
       success: false,
       message: "Ops, algo deu errado ao agendar. Tente novamente.",
