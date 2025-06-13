@@ -62,3 +62,7 @@ INSERT INTO servicos (nome, descricao, duracao) VALUES
 ('Barba', 'Modelagem e aparo de barba', '00:30:00'),
 ('Corte + Barba', 'Corte e modelagem de barba', '01:00:00');
 
+-- Garante compatibilidade com bancos existentes
+ALTER TABLE agendamentos
+    ADD COLUMN IF NOT EXISTS google_event_id VARCHAR(255) NOT NULL;
+

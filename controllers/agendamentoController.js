@@ -4,6 +4,18 @@ const {
   criarAgendamento,
 } = require("../services/calendarService");
 
+// Garante que a coluna google_event_id exista na tabela de agendamentos
+async function ensureGoogleEventIdColumn() {
+  const [rows] = await pool.query(
+    "SHOW COLUMNS FROM agendamentos LIKE 'google_event_id'"
+  );
+  if (rows.length === 0) {
+    await pool.query(
+      "ALTER TABLE agendamentos ADD COLUMN google_event_id VARCHAR(255)"
+    );
+  }
+}
+
 async function buscarHorariosDisponiveis(data) {
   try {
     const horarios = await listarHorariosDisponiveis(data);
@@ -16,6 +28,7 @@ async function buscarHorariosDisponiveis(data) {
 
 async function agendarServico({ clienteId, clienteNome, servicoNome, horario }) {
   try {
+    await ensureGoogleEventIdColumn();
     if (!clienteId || !horario) {
       return { success: false, message: "Cliente ou horário inválido." };
     }
