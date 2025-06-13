@@ -145,7 +145,7 @@ async function listarTodosHorariosDisponiveis(dias = 7) {
 }
 
 // --- Rota Principal do Webhook ---
-app.post("/webhook", async (req, res) => {
+app.post("/webhook", async (req, res, next) => {
   const msg = req.body.Body || req.body.text;
   const from = req.body.From || req.body.sessionId;
   const profileName = req.body.ProfileName || "Cliente";
@@ -1100,10 +1100,16 @@ app.post("/webhook", async (req, res) => {
     console.log("Resposta FINAL a ser enviada ao usuário:", resposta);
     res.json({ reply: resposta });
   } catch (error) {
-    // Captura erros globais do webhook
+    // Propaga erros não tratados para o middleware global
     console.error("ERRO GERAL no Dialogflow ou webhook:", error);
-    res.json({ reply: "Ops, algo deu errado. Tente novamente?" });
+    next(error);
   }
+});
+
+// Middleware global de tratamento de erros
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Ops, algo deu errado. Tente novamente mais tarde.' });
 });
 
 app.listen(port, () => {

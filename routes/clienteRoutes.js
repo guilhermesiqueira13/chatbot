@@ -4,7 +4,7 @@ const router = express.Router();
 const { encontrarOuCriarCliente, atualizarNomeCliente } = require('../controllers/clienteController');
 
 // Cria ou retorna cliente existente a partir do telefone
-router.post('/buscar-ou-criar', async (req, res) => {
+router.post('/buscar-ou-criar', async (req, res, next) => {
   const { telefone, profileName } = req.body;
   if (!telefone) {
     return res.status(400).json({ error: 'telefone é obrigatório' });
@@ -13,13 +13,12 @@ router.post('/buscar-ou-criar', async (req, res) => {
     const cliente = await encontrarOuCriarCliente(telefone, profileName);
     res.json(cliente);
   } catch (err) {
-    console.error('Erro ao buscar/criar cliente:', err);
-    res.status(500).json({ error: 'Erro ao buscar ou criar cliente' });
+    next(err);
   }
 });
 
 // Atualiza o nome de um cliente
-router.put('/:id/nome', async (req, res) => {
+router.put('/:id/nome', async (req, res, next) => {
   const { id } = req.params;
   const { nome } = req.body;
   if (!nome) {
@@ -32,8 +31,7 @@ router.put('/:id/nome', async (req, res) => {
     }
     res.json(cliente);
   } catch (err) {
-    console.error('Erro ao atualizar cliente:', err);
-    res.status(500).json({ error: 'Erro ao atualizar cliente' });
+    next(err);
   }
 });
 
