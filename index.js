@@ -15,6 +15,7 @@ const {
   cancelarAgendamento,
   reagendarAgendamento,
 } = require("./controllers/gerenciamentoController");
+const logger = require("./utils/logger");
 
 const app = express();
 const port = 3000;
@@ -151,7 +152,7 @@ app.post("/webhook", async (req, res, next) => {
   const profileName = req.body.ProfileName || "Cliente";
 
   if (!msg || !from) {
-    console.error("Requisição webhook inválida: 'Body' ou 'From' ausentes.");
+    logger.error("Requisição webhook inválida: 'Body' ou 'From' ausentes.");
     return res.status(400).send("Requisição inválida.");
   }
 
@@ -233,7 +234,7 @@ app.post("/webhook", async (req, res, next) => {
           break;
         case "confirmar_cancelamento": {
           const agendamentoPendente = agendamentosPendentes.get(from);
-          console.log(
+          logger.info(
             "agendamentosPendentes para from:",
             from,
             agendamentoPendente
@@ -255,13 +256,13 @@ app.post("/webhook", async (req, res, next) => {
           );
 
           if (isConfirmation) {
-            console.log(
+            logger.info(
               "Tentando cancelar agendamento com ID:",
               agendamentoPendente.agendamentoId
             );
 
             if (!agendamentoPendente.agendamentoId) {
-              console.error("agendamentoId inválido:", agendamentoPendente);
+              logger.error("agendamentoId inválido:", agendamentoPendente);
               resposta = "Erro: ID do agendamento inválido. Tente novamente.";
               agendamentosPendentes.delete(from);
               processamentoConcluido = true;
@@ -272,10 +273,10 @@ app.post("/webhook", async (req, res, next) => {
               const result = await cancelarAgendamento(
                 agendamentoPendente.agendamentoId
               );
-              console.log("Resultado de cancelarAgendamento:", result);
+              logger.info("Resultado de cancelarAgendamento:", result);
 
               if (!result || typeof result.success !== "boolean") {
-                console.error("Formato de result inválido:", result);
+                logger.error("Formato de result inválido:", result);
                 resposta =
                   "Ops, algo deu errado ao processar o cancelamento. Tente novamente mais tarde.";
                 agendamentosPendentes.delete(from);
@@ -284,7 +285,7 @@ app.post("/webhook", async (req, res, next) => {
               }
 
               if (!result.success) {
-                console.log("Falha no cancelamento:", result.message);
+                logger.info("Falha no cancelamento:", result.message);
                 resposta =
                   result.message ||
                   "Ops, algo deu errado ao cancelar o agendamento. Por favor, tente novamente.";
@@ -299,7 +300,7 @@ app.post("/webhook", async (req, res, next) => {
               agendamentosPendentes.delete(from);
               processamentoConcluido = true;
             } catch (error) {
-              console.error("Erro ao processar cancelamento:", error);
+              logger.error("Erro ao processar cancelamento:", error);
               resposta =
                 "Ops, algo deu errado ao processar o cancelamento. Tente novamente mais tarde.";
               agendamentosPendentes.delete(from);
@@ -561,7 +562,7 @@ app.post("/webhook", async (req, res, next) => {
             agendamentosPendentes.delete(from);
             break;
           }
-          console.log(agendamentoPendente);
+          logger.info(agendamentoPendente);
           resposta =
             "Ok, por favor, me diga o nome que você gostaria de usar para o agendamento.";
           agendamentosPendentes.set(from, {
@@ -623,7 +624,7 @@ app.post("/webhook", async (req, res, next) => {
           try {
             agendamentosAtivos = await listarAgendamentosAtivos(cliente.id);
           } catch (error) {
-            console.error(
+            logger.error(
               "ERRO: Erro ao listar agendamentos para reagendamento:",
               error
             );
@@ -997,7 +998,7 @@ app.post("/webhook", async (req, res, next) => {
           try {
             agendamentosAtivos = await listarAgendamentosAtivos(cliente.id);
           } catch (error) {
-            console.error(
+            logger.error(
               "ERRO: Erro ao listar agendamentos para cancelamento:",
               error
             );
@@ -1097,23 +1098,23 @@ app.post("/webhook", async (req, res, next) => {
           break;
       }
     }
-    console.log("Resposta FINAL a ser enviada ao usuário:", resposta);
+    logger.info("Resposta FINAL a ser enviada ao usuário:", resposta);
     res.json({ reply: resposta });
   } catch (error) {
     // Propaga erros não tratados para o middleware global
-    console.error("ERRO GERAL no Dialogflow ou webhook:", error);
+    logger.error("ERRO GERAL no Dialogflow ou webhook:", error);
     next(error);
   }
 });
 
 // Middleware global de tratamento de erros
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
+  logger.error('Unhandled error:', err);
   const status = err.status || 500;
   const message = err.message || 'Ops, algo deu errado. Tente novamente mais tarde.';
   res.status(status).json({ error: message });
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${port}`);
+  logger.info(`🚀 Servidor rodando em http://localhost:${port}`);
 });

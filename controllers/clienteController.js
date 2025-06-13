@@ -5,7 +5,7 @@ const {
 } = require("../utils/validation");
 const { ValidationError } = require("../utils/errors");
 
-// Encontra ou cria um cliente no banco de dados.
+const logger = require("../utils/logger");
 // Se o cliente existir, ele é retornado. Se não, um novo é criado.
 // Tenta usar profileName do Twilio, se disponível.
 async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
@@ -38,7 +38,7 @@ async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
           cliente.id,
         ]);
         cliente.nome = profileName; // Atualiza o objeto para o nome mais recente
-        console.log(`Nome do cliente atualizado para: ${profileName}`);
+        logger.info(`Nome do cliente atualizado para: ${profileName}`);
       }
     } else {
       // Cliente não encontrado, cria um novo
@@ -52,11 +52,11 @@ async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
         nome: nomeParaSalvar,
         telefone: telefone,
       };
-      console.log(`Novo cliente criado: ${nomeParaSalvar}`);
+      logger.info(`Novo cliente criado: ${nomeParaSalvar}`);
     }
     return cliente;
   } catch (error) {
-    console.error("Erro ao encontrar ou criar cliente:", error);
+    logger.error("Erro ao encontrar ou criar cliente:", error);
     throw error;
   } finally {
     if (client) client.release();
@@ -69,7 +69,7 @@ async function atualizarNomeCliente(clienteId, novoNome) {
     throw new ValidationError("Nome inválido");
   }
   let client;
-  console.log("aqui");
+  logger.info("aqui");
 
   try {
     client = await pool.getConnection();
@@ -78,20 +78,20 @@ async function atualizarNomeCliente(clienteId, novoNome) {
       [novoNome, clienteId]
     );
     if (result.affectedRows > 0) {
-      console.log(`Nome do cliente ${clienteId} atualizado para: ${novoNome}`);
+      logger.info(`Nome do cliente ${clienteId} atualizado para: ${novoNome}`);
       // Retorna o cliente atualizado ou um sinal de sucesso
       const [updatedRows] = await client.query(
         "SELECT id, nome, telefone FROM clientes WHERE id = ?",
         [clienteId]
       );
 
-      console.log(updatedRows);
+      logger.info(updatedRows);
 
       return updatedRows[0];
     }
     return null;
   } catch (error) {
-    console.error("Erro ao atualizar nome do cliente:", error);
+    logger.error("Erro ao atualizar nome do cliente:", error);
     throw error;
   } finally {
     if (client) client.release();
