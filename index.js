@@ -5,6 +5,7 @@ const {
   buscarHorariosDisponiveis,
   agendarServico,
 } = require("./controllers/agendamentoController");
+const { formatarDataHorarioBr } = require("./utils/utils");
 const {
   encontrarOuCriarCliente,
   atualizarNomeCliente,
@@ -14,7 +15,6 @@ const {
   cancelarAgendamento,
   reagendarAgendamento,
 } = require("./controllers/gerenciamentoController");
-const pool = require("./db");
 
 const app = express();
 const port = 3000;
@@ -31,34 +31,8 @@ const agendamentosPendentes = new Map();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-/**
- * Formata um objeto Date para uma string legível em português.
- * @param {Date|string} dia_horario - O objeto Date ou string de data/hora.
- * @returns {string} Data e hora formatadas (ex: "Sexta-feira, 30/05/2025, 09:00").
- */
-function formatarData(dia_horario) {
-  const data = new Date(dia_horario);
-  if (isNaN(data.getTime())) {
-    console.error(
-      "ERRO: Data inválida fornecida para formatarData:",
-      dia_horario
-    );
-    return "Data inválida";
-  }
-
-  const options = {
-    weekday: "long",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  };
-  const formattedDate = new Intl.DateTimeFormat("pt-BR", options).format(data);
-  // Capitaliza a primeira letra do dia da semana
-  return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-}
+// Usa utilitário de formatação em pt-BR
+const formatarData = formatarDataHorarioBr;
 
 /**
  * Encontra o horário disponível mais próximo a uma data/hora solicitada.
@@ -146,6 +120,22 @@ function getDateFromWeekdayAndTime(diaSemanaStr, horaStr) {
   }
 
   return data;
+}
+
+// Lista horários disponíveis para os próximos 'dias' dias
+async function listarTodosHorariosDisponiveis(dias = 7) {
+  const horarios = [];
+  const hoje = new Date();
+  for (let i = 0; i < dias; i++) {
+    const data = new Date(hoje);
+    data.setDate(hoje.getDate() + i);
+    const dataStr = data.toISOString().slice(0, 10);
+    const horas = await buscarHorariosDisponiveis(dataStr);
+    for (const hora of horas) {
+      horarios.push({ dia_horario: `${dataStr}T${hora}:00` });
+    }
+  }
+  return horarios;
 }
 
 // --- Rota Principal do Webhook ---
@@ -363,7 +353,7 @@ app.post("/webhook", async (req, res) => {
             agendamentoPendente.servicoIds.push(servicoInfo.id);
           }
 
-          const horarios = await buscarHorariosDisponiveis();
+          const horarios = await listarTodosHorariosDisponiveis();
           // Verifica se há horários ou se a busca falhou
           if (!horarios || !horarios.length) {
             resposta =
@@ -399,7 +389,7 @@ app.post("/webhook", async (req, res) => {
             break;
           }
 
-          const horarios = await buscarHorariosDisponiveis();
+          const horarios = await listarTodosHorariosDisponiveis();
           if (!horarios || !horarios.length) {
             resposta =
               "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
@@ -407,13 +397,12 @@ app.post("/webhook", async (req, res) => {
             break;
           }
 
-          let horarioId, diaHorario;
+          let diaHorario;
           const escolhaNumero = parseInt(msg) - 1; // Ajusta para índice 0
           let dataSolicitada = null;
 
           if (!isNaN(escolhaNumero) && horarios[escolhaNumero]) {
             // Usuário escolheu por número
-            horarioId = horarios[escolhaNumero].id;
             diaHorario = horarios[escolhaNumero].dia_horario;
           } else {
             // Usuário tentou informar dia e hora
@@ -460,23 +449,13 @@ app.post("/webhook", async (req, res) => {
                 hour12: false,
               });
 
-              // Busca por horário exato no banco de dados
-              const [horarioRow] = await pool.query(
-                `SELECT id, dia_horario
-               FROM horarios_disponiveis
-               WHERE LOWER(dia_semana) = ?
-               AND DATE_FORMAT(dia_horario, '%H:%i') = ?
-               AND disponivel = TRUE
-               AND dia_horario >= NOW()
-               LIMIT 1`,
-                [diaDaSemanaFormatado, horaFormatada]
+              const horarioExato = horarios.find(
+                (h) => new Date(h.dia_horario).getTime() === dataSolicitada.getTime()
               );
 
-              if (horarioRow.length) {
-                horarioId = horarioRow[0].id;
-                diaHorario = horarioRow[0].dia_horario;
+              if (horarioExato) {
+                diaHorario = horarioExato.dia_horario;
               } else {
-                // Se o horário exato não for encontrado, procura o mais próximo
                 const horarioMaisProximo = encontrarHorarioProximo(
                   dataSolicitada.toISOString(),
                   horarios
@@ -485,20 +464,15 @@ app.post("/webhook", async (req, res) => {
                   resposta = `O horário *${diaDaSemanaFormatado} às ${horaFormatada}* não está disponível. O mais próximo é *${formatarData(
                     horarioMaisProximo.dia_horario
                   )}*. Deseja escolher este? Responda 'Sim' ou escolha outro horário.`;
-                  // Armazena o horário próximo para confirmação futura
                   agendamentosPendentes.set(from, {
                     ...agendamentoPendente,
                     confirmationStep: "confirmar_horario_proximo",
-                    horarioProximoId: horarioMaisProximo.id,
                     diaHorarioProximo: horarioMaisProximo.dia_horario,
                   });
-                  break; // Sai do switch case, aguardando a confirmação do horário próximo
+                  break;
                 } else {
                   resposta = `Nenhum horário disponível próximo a *${diaDaSemanaFormatado} às ${horaFormatada}*. Escolha outro:\n\n${horarios
-                    .map(
-                      (h, index) =>
-                        `${index + 1}. *${formatarData(h.dia_horario)}*`
-                    )
+                    .map((h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`)
                     .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
                   break;
                 }
@@ -514,7 +488,6 @@ app.post("/webhook", async (req, res) => {
           }
 
           // Se um horário válido foi escolhido/encontrado, atualiza o estado
-          agendamentoPendente.horarioId = horarioId;
           agendamentoPendente.dia_horario = diaHorario;
 
           // O objeto 'cliente' já está atualizado no início do webhook
@@ -546,11 +519,12 @@ app.post("/webhook", async (req, res) => {
           }
 
           // A variável 'cliente' no escopo global do webhook já possui o nome correto.
-          const result = await agendarServico(
-            agendamentoPendente.clienteId,
-            agendamentoPendente.horarioId,
-            agendamentoPendente.servicoIds
-          );
+          const result = await agendarServico({
+            clienteId: agendamentoPendente.clienteId,
+            clienteNome: cliente.nome,
+            servicoNome: agendamentoPendente.servicos.join(", "),
+            horario: agendamentoPendente.dia_horario,
+          });
 
           if (!result.success) {
             resposta =
@@ -706,7 +680,7 @@ app.post("/webhook", async (req, res) => {
             agendamentoPendente.agendamentosAtivos[escolhaNumero];
 
           if (!isNaN(escolhaNumero) && agendamentoEscolhido) {
-            const horarios = await buscarHorariosDisponiveis();
+            const horarios = await listarTodosHorariosDisponiveis();
             if (!horarios || !horarios.length) {
               resposta =
                 "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
@@ -757,7 +731,7 @@ app.post("/webhook", async (req, res) => {
           );
 
           if (isConfirmation) {
-            const horarios = await buscarHorariosDisponiveis();
+            const horarios = await listarTodosHorariosDisponiveis();
             if (!horarios || !horarios.length) {
               resposta =
                 "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
@@ -795,7 +769,7 @@ app.post("/webhook", async (req, res) => {
             break;
           }
 
-          const horarios = await buscarHorariosDisponiveis();
+          const horarios = await listarTodosHorariosDisponiveis();
           if (!horarios || !horarios.length) {
             resposta =
               "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
@@ -803,12 +777,11 @@ app.post("/webhook", async (req, res) => {
             break;
           }
 
-          let horarioId, diaHorario;
+          let diaHorario;
           const escolhaNumero = parseInt(msg) - 1;
           let dataSolicitada = null;
 
           if (!isNaN(escolhaNumero) && horarios[escolhaNumero]) {
-            horarioId = horarios[escolhaNumero].id;
             diaHorario = horarios[escolhaNumero].dia_horario;
           } else {
             const diaSemanaMatch = msg
@@ -854,20 +827,12 @@ app.post("/webhook", async (req, res) => {
                 hour12: false,
               });
 
-              const [horarioRow] = await pool.query(
-                `SELECT id, dia_horario
-               FROM horarios_disponiveis
-               WHERE LOWER(dia_semana) = ?
-               AND DATE_FORMAT(dia_horario, '%H:%i') = ?
-               AND disponivel = TRUE
-               AND dia_horario >= NOW()
-               LIMIT 1`,
-                [diaDaSemanaFormatado, horaFormatada]
+              const horarioExato = horarios.find(
+                (h) => new Date(h.dia_horario).getTime() === dataSolicitada.getTime()
               );
 
-              if (horarioRow.length) {
-                horarioId = horarioRow[0].id;
-                diaHorario = horarioRow[0].dia_horario;
+              if (horarioExato) {
+                diaHorario = horarioExato.dia_horario;
               } else {
                 const horarioMaisProximo = encontrarHorarioProximo(
                   dataSolicitada.toISOString(),
@@ -880,16 +845,12 @@ app.post("/webhook", async (req, res) => {
                   agendamentosPendentes.set(from, {
                     ...agendamentoPendente,
                     confirmationStep: "confirmar_horario_proximo",
-                    horarioProximoId: horarioMaisProximo.id,
                     diaHorarioProximo: horarioMaisProximo.dia_horario,
                   });
                   break;
                 } else {
                   resposta = `Nenhum horário disponível próximo a *${diaDaSemanaFormatado} às ${horaFormatada}*. Escolha outro:\n\n${horarios
-                    .map(
-                      (h, index) =>
-                        `${index + 1}. *${formatarData(h.dia_horario)}*`
-                    )
+                    .map((h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`)
                     .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
                   break;
                 }
@@ -904,7 +865,6 @@ app.post("/webhook", async (req, res) => {
             }
           }
 
-          agendamentoPendente.horarioId = horarioId;
           agendamentoPendente.dia_horario = diaHorario;
           agendamentoPendente.confirmationStep =
             "awaiting_reagendamento_confirmation";
@@ -935,7 +895,7 @@ app.post("/webhook", async (req, res) => {
           if (isConfirmation) {
             const result = await reagendarAgendamento(
               agendamentoPendente.agendamentoId,
-              agendamentoPendente.horarioId
+              agendamentoPendente.dia_horario
             );
 
             if (!result.success) {
@@ -965,9 +925,8 @@ app.post("/webhook", async (req, res) => {
           const agendamentoPendente = agendamentosPendentes.get(from);
           if (
             !agendamentoPendente ||
-            agendamentoPendente.confirmationStep !==
-              "confirmar_horario_proximo" ||
-            !agendamentoPendente.horarioProximoId
+            agendamentoPendente.confirmationStep !== "confirmar_horario_proximo" ||
+            !agendamentoPendente.diaHorarioProximo
           ) {
             resposta =
               "Nenhuma sugestão de horário próximo para confirmar. Por favor, tente novamente.";
@@ -980,8 +939,6 @@ app.post("/webhook", async (req, res) => {
           );
 
           if (isConfirmation) {
-            agendamentoPendente.horarioId =
-              agendamentoPendente.horarioProximoId;
             agendamentoPendente.dia_horario =
               agendamentoPendente.diaHorarioProximo;
 
@@ -1011,7 +968,7 @@ app.post("/webhook", async (req, res) => {
             agendamentosPendentes.set(from, agendamentoPendente);
           } else {
             // Se o usuário não quiser o horário próximo, oferece a lista novamente
-            const horarios = await buscarHorariosDisponiveis();
+            const horarios = await listarTodosHorariosDisponiveis();
             resposta = `Ok, escolha outro horário:\n\n${horarios
               .map(
                 (h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`
@@ -1022,7 +979,6 @@ app.post("/webhook", async (req, res) => {
               agendamentoPendente.agendamentoId
                 ? "awaiting_reagendamento_datahora" // Volta para escolha de horário para reagendamento
                 : "awaiting_date_time"; // Volta para escolha de horário para novo agendamento
-            delete agendamentoPendente.horarioProximoId; // Limpa os dados do horário sugerido
             delete agendamentoPendente.diaHorarioProximo;
             agendamentosPendentes.set(from, agendamentoPendente);
           }
