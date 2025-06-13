@@ -20,6 +20,7 @@ const {
 } = require("./controllers/gerenciamentoController");
 const logger = require("./utils/logger");
 const mensagens = require("./utils/mensagensUsuario");
+const originValidator = require("./middlewares/originValidator");
 
 const app = express();
 const port = 3000;
@@ -56,7 +57,7 @@ const SERVICOS_VALIDOS = {
 };
 
 // --- Rota Principal do Webhook ---
-app.post("/webhook", async (req, res, next) => {
+app.post("/webhook", originValidator, async (req, res, next) => {
   const msg = req.body.Body || req.body.text;
   const from = req.body.From || req.body.sessionId;
   const profileName = req.body.ProfileName || "Cliente";
