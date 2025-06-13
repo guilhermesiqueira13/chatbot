@@ -1109,7 +1109,9 @@ app.post("/webhook", async (req, res, next) => {
 // Middleware global de tratamento de erros
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Ops, algo deu errado. Tente novamente mais tarde.' });
+  const status = err.status || 500;
+  const message = err.message || 'Ops, algo deu errado. Tente novamente mais tarde.';
+  res.status(status).json({ error: message });
 });
 
 app.listen(port, () => {

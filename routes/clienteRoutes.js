@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { encontrarOuCriarCliente, atualizarNomeCliente } = require('../controllers/clienteController');
+const { ValidationError } = require('../utils/errors');
 
 // Cria ou retorna cliente existente a partir do telefone
 router.post('/buscar-ou-criar', async (req, res, next) => {
@@ -13,6 +14,9 @@ router.post('/buscar-ou-criar', async (req, res, next) => {
     const cliente = await encontrarOuCriarCliente(telefone, profileName);
     res.json(cliente);
   } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
     next(err);
   }
 });
@@ -31,6 +35,9 @@ router.put('/:id/nome', async (req, res, next) => {
     }
     res.json(cliente);
   } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
     next(err);
   }
 });
