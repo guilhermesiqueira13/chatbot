@@ -34,13 +34,12 @@ CREATE INDEX idx_horario_disponivel ON horarios_disponiveis(dia_horario, disponi
 CREATE TABLE agendamentos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT NOT NULL,
-    horario_id INT NOT NULL,
+    google_event_id VARCHAR(255) NOT NULL,
+    horario DATETIME NOT NULL,
     status ENUM('ativo', 'cancelado') DEFAULT 'ativo',
     data_agendamento DATETIME DEFAULT CURRENT_TIMESTAMP,
     observacao TEXT DEFAULT NULL,
-    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
-    FOREIGN KEY (horario_id) REFERENCES horarios_disponiveis(id) ON DELETE RESTRICT,
-    UNIQUE (horario_id, status)
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_agendamentos_cliente_status ON agendamentos(cliente_id, status);
@@ -63,42 +62,3 @@ INSERT INTO servicos (nome, descricao, duracao) VALUES
 ('Barba', 'Modelagem e aparo de barba', '00:30:00'),
 ('Corte + Barba', 'Corte e modelagem de barba', '01:00:00');
 
-DELIMITER $$
-CREATE PROCEDURE gerar_horarios()
-BEGIN
-    DECLARE i INT DEFAULT 0;
-    DECLARE data_base DATE DEFAULT CURDATE();
-    DECLARE hora_inicio TIME;
-    DELETE FROM horarios_disponiveis WHERE dia_horario < NOW();
-    WHILE i < 30 DO
-        IF DAYOFWEEK(DATE_ADD(data_base, INTERVAL i DAY)) BETWEEN 2 AND 7 THEN
-            SET hora_inicio = '09:00:00';
-            WHILE hora_inicio <= '18:00:00' DO
-                INSERT IGNORE INTO horarios_disponiveis (dia_horario, disponivel)
-                VALUES (
-                    CONVERT_TZ(
-                        CONCAT(DATE_ADD(data_base, INTERVAL i DAY), ' ', hora_inicio),
-                        '+00:00', '-03:00'
-                    ),
-                    TRUE
-                );
-                SET hora_inicio = ADDTIME(hora_inicio, '00:30:00');
-            END WHILE;
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-END$$
-DELIMITER ;
-
-DELIMITER $$
-CREATE EVENT IF NOT EXISTS gerar_horarios_diarios
-ON SCHEDULE EVERY 1 DAY
-STARTS CURRENT_DATE + INTERVAL 1 DAY + INTERVAL 0 HOUR
-ON COMPLETION PRESERVE
-DO
-BEGIN
-    CALL gerar_horarios();
-END$$
-DELIMITER ;
-
-CALL gerar_horarios();
