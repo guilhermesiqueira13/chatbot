@@ -15,11 +15,11 @@ const calendar = google.calendar({ version: 'v3', auth });
 /**
  * Lista horários disponíveis das 09h às 18h em intervalos de 30min
  * consultando os eventos do calendário.
- * @param {string} data Formato DD-MM-YYYY
+ * @param {string} data Formato YYYY-MM-DD
  * @returns {Promise<string[]>} horários disponíveis no formato HH:mm
  */
 async function listarHorariosDisponiveis(data) {
-  const [dia, mes, ano] = data.split('-');
+  const [ano, mes, dia] = data.split('-');
   const inicioDia = `${ano}-${mes}-${dia}T00:00:00-03:00`;
   const fimDia = `${ano}-${mes}-${dia}T23:59:59-03:00`;
 
