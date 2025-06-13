@@ -5,26 +5,31 @@ const {
   criarAgendamento,
 } = require("../services/calendarService");
 
-async function cancelarAgendamento(agendamentoId) {
+async function cancelarAgendamento(agendamentoId, googleEventId) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
 
-    const [agendamento] = await connection.query(
-      'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"',
-      [agendamentoId]
-    );
+    let eventId = googleEventId;
+    if (!eventId) {
+      const [agendamento] = await connection.query(
+        'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"',
+        [agendamentoId]
+      );
 
-    if (!agendamento || agendamento.length === 0) {
-      await connection.release();
-      return {
-        success: false,
-        message: "Agendamento não encontrado ou já cancelado.",
-      };
+      if (!agendamento || agendamento.length === 0) {
+        await connection.release();
+        return {
+          success: false,
+          message: "Agendamento não encontrado ou já cancelado.",
+        };
+      }
+
+      eventId = agendamento[0].google_event_id;
     }
 
     try {
-      await cancelarEvento(agendamento[0].google_event_id);
+      await cancelarEvento(eventId);
     } catch (e) {
       console.error("Erro ao cancelar evento no Google Calendar:", e);
     }
@@ -63,24 +68,28 @@ async function listarAgendamentosAtivos(clienteId) {
   }
 }
 
-async function reagendarAgendamento(agendamentoId, novoHorario) {
+async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
   try {
     await pool.query("START TRANSACTION");
 
-    const [agendamento] = await pool.query(
-      'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"',
-      [agendamentoId]
-    );
-    if (!agendamento.length) {
-      await pool.query("ROLLBACK");
-      return {
-        success: false,
-        message: "Agendamento não encontrado ou já cancelado.",
-      };
+    let eventId = googleEventId;
+    if (!eventId) {
+      const [agendamento] = await pool.query(
+        'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"',
+        [agendamentoId]
+      );
+      if (!agendamento.length) {
+        await pool.query("ROLLBACK");
+        return {
+          success: false,
+          message: "Agendamento não encontrado ou já cancelado.",
+        };
+      }
+      eventId = agendamento[0].google_event_id;
     }
 
     try {
-      await cancelarEvento(agendamento[0].google_event_id);
+      await cancelarEvento(eventId);
     } catch (e) {
       console.error("Erro ao cancelar evento antigo no Google Calendar:", e);
     }

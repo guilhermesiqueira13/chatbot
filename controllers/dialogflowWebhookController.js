@@ -264,7 +264,8 @@ router.post("/webhook", async (req, res) => {
 
             try {
               const result = await cancelarAgendamento(
-                agendamentoPendente.agendamentoId
+                agendamentoPendente.agendamentoId,
+                agendamentoPendente.eventId
               );
               console.log("Resultado de cancelarAgendamento:", result);
 
@@ -640,6 +641,7 @@ router.post("/webhook", async (req, res) => {
             agendamentosPendentes.set(from, {
               clienteId: cliente.id,
               agendamentoId: agendamento.id,
+              eventId: agendamento.google_event_id,
               servico: agendamento.servico,
               confirmationStep: "confirmar_inicio_reagendamento",
             });
@@ -703,6 +705,7 @@ router.post("/webhook", async (req, res) => {
             agendamentosPendentes.set(from, {
               ...agendamentoPendente,
               agendamentoId: agendamentoEscolhido.id,
+              eventId: agendamentoEscolhido.google_event_id,
               servico: agendamentoEscolhido.servico,
               confirmationStep: "awaiting_reagendamento_datahora",
               agendamentosAtivos: undefined, // Limpa agendamentosAtivos para evitar uso incorreto
@@ -895,7 +898,8 @@ router.post("/webhook", async (req, res) => {
           if (isConfirmation) {
             const result = await reagendarAgendamento(
               agendamentoPendente.agendamentoId,
-              agendamentoPendente.dia_horario
+              agendamentoPendente.dia_horario,
+              agendamentoPendente.eventId
             );
 
             if (!result.success) {
@@ -1014,6 +1018,7 @@ router.post("/webhook", async (req, res) => {
             agendamentosPendentes.set(from, {
               clienteId: cliente.id,
               agendamentoId: agendamento.id,
+              eventId: agendamento.google_event_id,
               servico: agendamento.servico,
               confirmationStep: "confirmar_cancelamento",
             });
@@ -1061,6 +1066,7 @@ router.post("/webhook", async (req, res) => {
             agendamentosPendentes.set(from, {
               ...agendamentoPendente,
               agendamentoId: agendamentoEscolhido.id,
+              eventId: agendamentoEscolhido.google_event_id,
               servico: agendamentoEscolhido.servico,
               confirmationStep: "confirmar_cancelamento",
               agendamentosAtivos: undefined, // Limpa agendamentosAtivos
