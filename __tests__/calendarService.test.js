@@ -31,6 +31,12 @@ describe('calendarService', () => {
     expect(horarios).toContain('13:30');
   });
 
+  test('listarHorariosDisponiveis ignora domingos', async () => {
+    __eventsMock.list.mockResolvedValue({ data: { items: [] } });
+    const horarios = await calendarService.listarHorariosDisponiveis('2024-01-07');
+    expect(horarios).toEqual([]);
+  });
+
   test('criarAgendamento repassa dados ao googleapis', async () => {
     __eventsMock.insert.mockResolvedValue({ data: { id: 'ev123' } });
     const dados = { cliente: 'Ana', servicos: ['Corte', 'Barba'], horario: '2024-01-01T09:00:00-03:00' };

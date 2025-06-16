@@ -54,7 +54,14 @@ async function listarHorariosDisponiveis(data) {
     }
   }
 
-  return disponiveis;
+  // Remove quaisquer horários que caiam em domingo
+  const filtrados = disponiveis.filter((h) => {
+    const dt = new Date(`${ano}-${mes}-${dia}T${h}:00-03:00`);
+    const day = dt.getDay();
+    return day >= 1 && day <= 6;
+  });
+
+  return filtrados;
 }
 
 /**
