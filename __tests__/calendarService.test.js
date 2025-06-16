@@ -10,7 +10,6 @@ jest.mock('googleapis', () => {
 });
 
 const { __eventsMock } = require('googleapis');
-process.env.CALENDAR_ID = 'cal1';
 const calendarService = require('../services/calendarService');
 
 describe('calendarService', () => {
@@ -46,6 +45,10 @@ describe('calendarService', () => {
   test('cancelarAgendamento chama events.delete', async () => {
     __eventsMock.delete.mockResolvedValue();
     await calendarService.cancelarAgendamento('ev456');
-    expect(__eventsMock.delete).toHaveBeenCalledWith({ calendarId: process.env.CALENDAR_ID, eventId: 'ev456' });
+    expect(__eventsMock.delete).toHaveBeenCalledWith({
+      calendarId:
+        '99435b27c68a7a48eca3aa3ab9770b8d0207851464d88c89e55c763bfca69c0a@group.calendar.google.com',
+      eventId: 'ev456',
+    });
   });
 });

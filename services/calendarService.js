@@ -2,7 +2,9 @@ require("dotenv").config();
 const { google } = require("googleapis");
 const path = require("path");
 
-const CALENDAR_ID = process.env.CALENDAR_ID; // ID do calendário exclusivo do bot
+// ID fixo do calendário utilizado pelo bot
+const CALENDAR_ID =
+  "99435b27c68a7a48eca3aa3ab9770b8d0207851464d88c89e55c763bfca69c0a@group.calendar.google.com";
 const TIME_ZONE = "America/Sao_Paulo";
 
 // Configura autenticação usando a conta de serviço
