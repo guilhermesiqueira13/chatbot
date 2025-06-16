@@ -70,14 +70,22 @@ function getDateFromWeekdayAndTime(diaSemanaStr, horaStr) {
 async function listarTodosHorariosDisponiveis(dias = 7) {
   const horarios = [];
   const hoje = new Date();
-  for (let i = 0; i < dias; i++) {
+  let adicionados = 0;
+  let offset = 0;
+  while (adicionados < dias) {
     const data = new Date(hoje);
-    data.setDate(hoje.getDate() + i);
+    data.setDate(hoje.getDate() + offset);
+    offset++;
+    // Ignora domingos (getDay() === 0)
+    if (data.getDay() === 0) {
+      continue;
+    }
     const dataStr = data.toISOString().slice(0, 10);
     const horas = await listarHorariosDisponiveis(dataStr);
     for (const hora of horas) {
       horarios.push({ dia_horario: `${dataStr}T${hora}:00` });
     }
+    adicionados++;
   }
   return horarios;
 }
