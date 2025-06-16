@@ -1,15 +1,29 @@
 const pool = require("../db");
-const {
-  isValidTelefone,
-  isValidNome,
-} = require("../utils/validation");
+const Joi = require("joi");
+const { isValidNome } = require("../utils/validation");
 const { ValidationError } = require("../utils/errors");
 
 const logger = require("../utils/logger");
+
+function padronizarTelefone(telefone) {
+  logger.info(`Telefone recebido: ${telefone}`);
+  let numeros = String(telefone).replace(/\D/g, "");
+  if (!numeros.startsWith("55")) {
+    numeros = "55" + numeros;
+  }
+  numeros = numeros.slice(0, 13);
+  const padronizado = `+${numeros}`;
+  logger.info(`Telefone padronizado: ${padronizado}`);
+  return padronizado;
+}
+
+const schemaTelefone = Joi.string().pattern(/^\+55\d{11}$/).required();
 // Se o cliente existir, ele é retornado. Se não, um novo é criado.
 // Tenta usar profileName do Twilio, se disponível.
 async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
-  if (!isValidTelefone(telefone)) {
+  const telefonePadronizado = padronizarTelefone(telefone);
+  const { error } = schemaTelefone.validate(telefonePadronizado);
+  if (error) {
     throw new ValidationError(
       "O número de telefone deve estar no formato +55DDDDDDDDDDD."
     );
@@ -24,7 +38,7 @@ async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
     client = await pool.getConnection();
     let [rows] = await client.query(
       "SELECT id, nome, telefone FROM clientes WHERE telefone = ?",
-      [telefone]
+      [telefonePadronizado]
     );
 
     let cliente;
@@ -49,12 +63,12 @@ async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
       const nomeParaSalvar = profileName || "Cliente"; // Usa profileName se existir, senão 'Cliente'
       const [result] = await client.query(
         "INSERT INTO clientes (nome, telefone) VALUES (?, ?)",
-        [nomeParaSalvar, telefone]
+        [nomeParaSalvar, telefonePadronizado]
       );
       cliente = {
         id: result.insertId,
         nome: nomeParaSalvar,
-        telefone: telefone,
+        telefone: telefonePadronizado,
       };
       logger.info(`Novo cliente criado: ${nomeParaSalvar}`);
     }
@@ -109,4 +123,5 @@ async function atualizarNomeCliente(clienteId, novoNome) {
 module.exports = {
   encontrarOuCriarCliente,
   atualizarNomeCliente,
+  padronizarTelefone,
 };
