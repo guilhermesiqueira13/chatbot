@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const dialogflow = require("@google-cloud/dialogflow");
@@ -23,13 +24,13 @@ const mensagens = require("./utils/mensagensUsuario");
 const originValidator = require("./middlewares/originValidator");
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Configuração do Dialogflow
 const sessionClient = new dialogflow.SessionsClient({
-  keyFilename: "./reservai_twilio.json", // Caminho para sua chave de serviço do Dialogflow
+  keyFilename: process.env.DIALOGFLOW_KEYFILE, // Caminho para sua chave de serviço do Dialogflow
 });
-const projectId = "reservai-twilio-qrps"; // ID do seu projeto Dialogflow
+const projectId = process.env.DIALOGFLOW_PROJECT_ID; // ID do seu projeto Dialogflow
 
 // Armazena estados temporários dos agendamentos por usuário
 const agendamentosPendentes = new Map();

@@ -52,10 +52,17 @@ Resposta esperada:
 1. Crie uma conta de serviço no Google Cloud e baixe o arquivo de credenciais.
 2. Salve o arquivo com o nome `reservai_twilio.json` na raiz do projeto.
 3. Compartilhe o calendário desejado com o e‑mail da conta de serviço.
-4. Edite `services/calendarService.js` preenchendo o valor de `CALENDAR_ID` com o ID do seu calendário.
+4. Crie um arquivo `.env` com as variáveis abaixo e ajuste de acordo com seu ambiente:
 
-```javascript
-const CALENDAR_ID = 'SEU_CALENDARIO_ID';
+```
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=root
+DB_NAME=barbearia
+DIALOGFLOW_KEYFILE=./reservai_twilio.json
+DIALOGFLOW_PROJECT_ID=reservai-twilio-qrps
+CALENDAR_ID=SEU_CALENDARIO_ID
+PORT=3000
 ```
 
 ## Executando o projeto
@@ -83,7 +90,7 @@ npx ngrok http 3000
 
 ### Ambiente de produção
 
-1. Configure as credenciais (`reservai_twilio.json` e `CALENDAR_ID`) e o banco de dados.
+1. Garanta que o arquivo `.env` esteja configurado com suas credenciais e dados do banco.
 2. Execute a aplicação usando Node ou um gerenciador de processos:
 
 ```bash
