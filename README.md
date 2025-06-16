@@ -103,3 +103,14 @@ npx ngrok http 3000
 ```bash
 node index.js
 ```
+
+## Exemplos de frases para treinar o Dialogflow
+
+Para que o bot reconheça a escolha de dias e horários de forma natural, inclua frases de treinamento como:
+
+- "Quero sexta à tarde"
+- "Tem sábado de manhã?"
+- "Horários para amanhã"
+- "Próxima semana"
+- "Quero ver quinta-feira"
+- "Quero agendar para a manhã"

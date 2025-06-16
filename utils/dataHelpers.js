@@ -82,9 +82,32 @@ async function listarTodosHorariosDisponiveis(dias = 7) {
   return horarios;
 }
 
+async function listarDiasDisponiveis(dias = 14) {
+  const horarios = await listarTodosHorariosDisponiveis(dias);
+  const diasMap = {};
+  for (const h of horarios) {
+    const [data, horaParte] = h.dia_horario.split('T');
+    const hora = horaParte.slice(0, 5);
+    if (!diasMap[data]) diasMap[data] = [];
+    diasMap[data].push(hora);
+  }
+  return diasMap;
+}
+
+function formatarDiaBr(dataStr) {
+  const data = new Date(dataStr);
+  const dia = data
+    .toLocaleDateString('pt-BR', { weekday: 'long' })
+    .replace('-feira', '');
+  const dataFmt = data.toLocaleDateString('pt-BR');
+  return `${dia.charAt(0).toUpperCase() + dia.slice(1)} (${dataFmt})`;
+}
+
 module.exports = {
   formatarDataHorarioBr,
   encontrarHorarioProximo,
   getDateFromWeekdayAndTime,
   listarTodosHorariosDisponiveis,
+  listarDiasDisponiveis,
+  formatarDiaBr,
 };

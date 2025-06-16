@@ -10,6 +10,8 @@ const {
   encontrarHorarioProximo,
   getDateFromWeekdayAndTime,
   listarTodosHorariosDisponiveis,
+  listarDiasDisponiveis,
+  formatarDiaBr,
 } = require("./utils/dataHelpers");
 const { normalizarServico } = require("./utils/stringHelpers");
 const {
@@ -165,6 +167,16 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             intent = "confirmar_horario_proximo";
           }
           break;
+        case "awaiting_day":
+          if (intent === "default") {
+            intent = "escolha_dia";
+          }
+          break;
+        case "awaiting_time":
+          if (intent === "default") {
+            intent = "escolha_horario";
+          }
+          break;
         case "confirmar_cancelamento": {
           const agendamentoPendente = agendamentosPendentes.get(from);
           logger.info(
@@ -289,22 +301,89 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             agendamentoPendente.servicoIds.push(servicoInfo.id);
           }
 
-          const horarios = await listarTodosHorariosDisponiveis();
-          // Verifica se há horários ou se a busca falhou
-          if (!horarios || !horarios.length) {
+          const diasDisponiveis = await listarDiasDisponiveis(14);
+          const diasKeys = Object.keys(diasDisponiveis);
+          if (!diasKeys.length) {
             resposta = mensagens.SEM_HORARIOS_DISPONIVEIS;
             agendamentosPendentes.delete(from);
             break;
           }
 
+          agendamentoPendente.diasDisponiveis = diasDisponiveis;
+          agendamentoPendente.diaIndex = 0;
+          const listaDias = diasKeys
+            .slice(0, 6)
+            .map((d) => `- ${formatarDiaBr(d)}`)
+            .join("\n");
+
           resposta = `Ótimo! Você escolheu *${agendamentoPendente.servicos.join(
             " e "
-          )}*.\nHorários disponíveis:\n\n${horarios
-            .map((h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`)
-            .join(
-              "\n"
-            )}\n\nDigite o número do horário desejado ou informe um dia e horário (exemplo: Sexta 10:00).`;
-          agendamentoPendente.confirmationStep = "awaiting_date_time";
+          )}*.\nEscolha um dia para agendar:\n${listaDias}\n\nSe quiser agendar para outra semana, escreva "Próxima semana".`;
+          agendamentoPendente.confirmationStep = "awaiting_day";
+          agendamentosPendentes.set(from, agendamentoPendente);
+          break;
+        }
+
+        case "escolha_dia": {
+          const agendamentoPendente = agendamentosPendentes.get(from);
+          if (
+            !agendamentoPendente ||
+            agendamentoPendente.confirmationStep !== "awaiting_day" ||
+            !agendamentoPendente.diasDisponiveis
+          ) {
+            resposta = mensagens.NAO_AGENDAMENTO_ANDAMENTO;
+            agendamentosPendentes.delete(from);
+            break;
+          }
+
+          const diasKeys = Object.keys(agendamentoPendente.diasDisponiveis);
+
+          const lower = msgLower;
+          if (lower.includes("próxima")) {
+            agendamentoPendente.diaIndex += 6;
+          } else if (lower.includes("voltar")) {
+            agendamentoPendente.diaIndex = Math.max(0, agendamentoPendente.diaIndex - 6);
+          } else {
+            let escolhido = null;
+            const dataMatch = msg.match(/(\d{1,2})\/(\d{1,2})/);
+            if (dataMatch) {
+              const d = parseInt(dataMatch[1], 10);
+              const m = parseInt(dataMatch[2], 10);
+              escolhido = diasKeys.find((k) => {
+                const dt = new Date(k);
+                return dt.getDate() === d && dt.getMonth() + 1 === m;
+              });
+            }
+            if (!escolhido) {
+              for (const k of diasKeys) {
+                const nome = new Date(k)
+                  .toLocaleDateString("pt-BR", { weekday: "long" })
+                  .replace("-feira", "")
+                  .toLowerCase();
+                if (lower.includes(nome.split(" ")[0])) {
+                  escolhido = k;
+                  break;
+                }
+              }
+            }
+            if (escolhido) {
+              agendamentoPendente.diaEscolhido = escolhido;
+              const horariosDia = agendamentoPendente.diasDisponiveis[escolhido];
+              agendamentoPendente.confirmationStep = "awaiting_time";
+              agendamentosPendentes.set(from, agendamentoPendente);
+              resposta = `Ótimo, você escolheu ${formatarDiaBr(escolhido)}. Estes são os horários disponíveis:\n${horariosDia
+                .map((h, i) => `- ${h}`)
+                .join("\n")}\nDigite o horário desejado ou "Voltar" para escolher outro dia.`;
+              break;
+            }
+          }
+
+          const inicio = agendamentoPendente.diaIndex;
+          const listaDias = diasKeys
+            .slice(inicio, inicio + 6)
+            .map((d) => `- ${formatarDiaBr(d)}`)
+            .join("\n");
+          resposta = `Escolha um dia para agendar:\n${listaDias}\n\nSe quiser agendar para outra semana, escreva "Próxima semana".`;
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
         }
@@ -431,9 +510,56 @@ app.post("/webhook", originValidator, async (req, res, next) => {
           agendamentosPendentes.set(from, agendamentoPendente);
 
           const horarioFormatado = formatarData(diaHorario);
-          resposta = `Você escolheu *${agendamentoPendente.servicos.join()}* para *${horarioFormatado}*.\nO nome que usaremos para o agendamento é *${
-            cliente.nome
-          }*.\nGostaria de manter este nome ou informar outro? (Responda 'Sim' ou 'Trocar')`;
+          resposta = `Você escolheu *${agendamentoPendente.servicos.join()}* para *${horarioFormatado}*.\nO nome que usaremos para o agendamento é *${cliente.nome}*.\nGostaria de manter este nome ou informar outro? (Responda 'Sim' ou 'Trocar')`;
+          break;
+        }
+
+        case "escolha_horario": {
+          const agendamentoPendente = agendamentosPendentes.get(from);
+          if (!agendamentoPendente || agendamentoPendente.confirmationStep !== "awaiting_time" || !agendamentoPendente.diaEscolhido) {
+            resposta = mensagens.NAO_AGENDAMENTO_ANDAMENTO;
+            agendamentosPendentes.delete(from);
+            break;
+          }
+
+          if (msgLower.includes("voltar")) {
+            agendamentoPendente.confirmationStep = "awaiting_day";
+            agendamentosPendentes.set(from, agendamentoPendente);
+            const diasKeys = Object.keys(agendamentoPendente.diasDisponiveis);
+            const listaDias = diasKeys
+              .slice(agendamentoPendente.diaIndex, agendamentoPendente.diaIndex + 6)
+              .map((d) => `- ${formatarDiaBr(d)}`)
+              .join("\n");
+            resposta = `Escolha um dia para agendar:\n${listaDias}\n\nSe quiser agendar para outra semana, escreva "Próxima semana".`;
+            break;
+          }
+
+          const horariosDia = agendamentoPendente.diasDisponiveis[agendamentoPendente.diaEscolhido];
+          let horaEscolhida = null;
+          const ind = parseInt(msg) - 1;
+          if (!isNaN(ind) && horariosDia[ind]) {
+            horaEscolhida = horariosDia[ind];
+          } else {
+            const matchHora = msg.match(/\d{1,2}:\d{2}/);
+            if (matchHora && horariosDia.includes(matchHora[0])) {
+              horaEscolhida = matchHora[0];
+            }
+          }
+
+          if (!horaEscolhida) {
+            resposta = `Escolha um horário válido ou digite "Voltar" para escolher outro dia.\n${horariosDia
+              .map((h, i) => `${i + 1}. ${h}`)
+              .join("\n")}`;
+            break;
+          }
+
+          agendamentoPendente.dia_horario = `${agendamentoPendente.diaEscolhido}T${horaEscolhida}:00`;
+          agendamentoPendente.clienteId = cliente.id;
+          agendamentoPendente.nomeSugerido = cliente.nome;
+          agendamentoPendente.confirmationStep = "awaiting_name_choice";
+          agendamentosPendentes.set(from, agendamentoPendente);
+          const horarioFormatadoEscolhido = formatarData(agendamentoPendente.dia_horario);
+          resposta = `Você escolheu *${agendamentoPendente.servicos.join()}* para *${horarioFormatadoEscolhido}*.\nO nome que usaremos para o agendamento é *${cliente.nome}*.\nGostaria de manter este nome ou informar outro? (Responda 'Sim' ou 'Trocar')`;
           break;
         }
 
