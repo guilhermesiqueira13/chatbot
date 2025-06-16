@@ -205,6 +205,7 @@ router.post("/webhook", async (req, res) => {
               agendamentosPendentes.delete(from);
               processamentoConcluido = true;
             } catch (error) {
+              console.error('Erro:', error, error && error.stack, JSON.stringify(error));
               logger.error("Erro ao processar cancelamento:", error);
               resposta =
                 "Ops, algo deu errado ao processar o cancelamento. Tente novamente mais tarde.";
@@ -529,6 +530,7 @@ router.post("/webhook", async (req, res) => {
           try {
             agendamentosAtivos = await listarAgendamentosAtivos(cliente.id);
           } catch (error) {
+            console.error('Erro:', error, error && error.stack, JSON.stringify(error));
             logger.error(
               "ERRO: Erro ao listar agendamentos para reagendamento:",
               error
@@ -906,6 +908,7 @@ router.post("/webhook", async (req, res) => {
           try {
             agendamentosAtivos = await listarAgendamentosAtivos(cliente.id);
           } catch (error) {
+            console.error('Erro:', error, error && error.stack, JSON.stringify(error));
             logger.error(
               "ERRO: Erro ao listar agendamentos para cancelamento:",
               error
@@ -1012,6 +1015,7 @@ router.post("/webhook", async (req, res) => {
     res.json({ reply: resposta });
   } catch (error) {
     // Captura erros globais do webhook
+    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
     logger.error("ERRO GERAL no Dialogflow ou webhook:", error);
     res.json({ reply: "Ops, algo deu errado. Tente novamente?" });
   }

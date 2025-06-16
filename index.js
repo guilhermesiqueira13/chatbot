@@ -213,6 +213,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
               agendamentosPendentes.delete(from);
               processamentoConcluido = true;
             } catch (error) {
+              console.error('Erro:', error, error && error.stack, JSON.stringify(error));
               logger.error("Erro ao processar cancelamento:", error);
               resposta = mensagens.ERRO_PROCESSAR_CANCELAMENTO;
               agendamentosPendentes.delete(from);
@@ -523,15 +524,16 @@ app.post("/webhook", originValidator, async (req, res, next) => {
           let agendamentosAtivos;
           try {
             agendamentosAtivos = await listarAgendamentosAtivos(cliente.id);
-          } catch (error) {
-            logger.error(
-              "ERRO: Erro ao listar agendamentos para reagendamento:",
-              error
-            );
-            resposta = mensagens.ERRO_VERIFICAR_AGENDAMENTOS;
-            agendamentosPendentes.delete(from);
-            break;
-          }
+            } catch (error) {
+              console.error('Erro:', error, error && error.stack, JSON.stringify(error));
+              logger.error(
+                "ERRO: Erro ao listar agendamentos para reagendamento:",
+                error
+              );
+              resposta = mensagens.ERRO_VERIFICAR_AGENDAMENTOS;
+              agendamentosPendentes.delete(from);
+              break;
+            }
 
           if (!agendamentosAtivos.length) {
             resposta = mensagens.SEM_AGENDAMENTOS_REAGENDAR;
@@ -883,20 +885,21 @@ app.post("/webhook", originValidator, async (req, res, next) => {
           break;
         }
 
-        case "cancelar_agendamento": {
-          // 'cliente' já está no escopo global do webhook com os dados atualizados
-          let agendamentosAtivos;
-          try {
-            agendamentosAtivos = await listarAgendamentosAtivos(cliente.id);
-          } catch (error) {
-            logger.error(
-              "ERRO: Erro ao listar agendamentos para cancelamento:",
-              error
-            );
-            resposta = mensagens.ERRO_VERIFICAR_AGENDAMENTOS;
-            agendamentosPendentes.delete(from);
-            break;
-          }
+          case "cancelar_agendamento": {
+            // 'cliente' já está no escopo global do webhook com os dados atualizados
+            let agendamentosAtivos;
+            try {
+              agendamentosAtivos = await listarAgendamentosAtivos(cliente.id);
+            } catch (error) {
+              console.error('Erro:', error, error && error.stack, JSON.stringify(error));
+              logger.error(
+                "ERRO: Erro ao listar agendamentos para cancelamento:",
+                error
+              );
+              resposta = mensagens.ERRO_VERIFICAR_AGENDAMENTOS;
+              agendamentosPendentes.delete(from);
+              break;
+            }
 
           if (!agendamentosAtivos.length) {
             resposta = mensagens.SEM_AGENDAMENTOS_CANCELAR;
@@ -990,6 +993,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
     res.json(createResponse(true, { reply: resposta }, null));
   } catch (error) {
     // Propaga erros não tratados para o middleware global
+    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
     logger.error("ERRO GERAL no Dialogflow ou webhook:", error);
     next(error);
   }
@@ -997,10 +1001,8 @@ app.post("/webhook", originValidator, async (req, res, next) => {
 
 // Middleware global de tratamento de erros
 app.use((err, req, res, next) => {
-  logger.error('Unhandled error:', err);
-  const status = err.status || 500;
-  const message = err.message || mensagens.ERRO_GERAL;
-  res.status(status).json(createResponse(false, null, message));
+  console.error('[ERROR]', err.stack || err.message || JSON.stringify(err));
+  res.status(500).json({ success: false, message: 'Erro interno do servidor' });
 });
 
 app.listen(port, () => {
