@@ -9,6 +9,8 @@ const MENSAGENS = {
     "Escolha um serviço antes (Corte, Barba ou Sobrancelha). Qual prefere?",
   SEM_HORARIOS_DISPONIVEIS:
     "Não temos horários disponíveis no momento. Tente novamente mais tarde!",
+  DOMINGO_NAO_PERMITIDO:
+    "Desculpe, não agendamos aos domingos. Escolha um dia de segunda a sábado.",
   NAO_AGENDAMENTO_ANDAMENTO:
     "Nenhum agendamento em andamento ou etapa incorreta. Quer agendar um serviço?",
   NAO_ESPERANDO_NOME:

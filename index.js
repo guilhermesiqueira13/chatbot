@@ -349,6 +349,11 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             if (dataParam) {
               const p = new Date(dataParam);
               if (!isNaN(p.getTime())) {
+                if (p.getDay() === 0) {
+                  resposta = mensagens.DOMINGO_NAO_PERMITIDO;
+                  agendamentosPendentes.set(from, agendamentoPendente);
+                  break;
+                }
                 const dataStr = p.toISOString().slice(0, 10);
                 if (diasKeys.includes(dataStr)) {
                   escolhido = dataStr;
@@ -357,6 +362,11 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             }
             if (!escolhido && parametros?.dia_semana?.stringValue) {
               const diaParam = parametros.dia_semana.stringValue.toLowerCase();
+              if ("domingo".startsWith(diaParam)) {
+                resposta = mensagens.DOMINGO_NAO_PERMITIDO;
+                agendamentosPendentes.set(from, agendamentoPendente);
+                break;
+              }
               escolhido = diasKeys.find((k) => {
                 const nome = new Date(k)
                   .toLocaleDateString("pt-BR", { weekday: "long" })
@@ -436,6 +446,11 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             }
 
             if (dataSolicitada && !isNaN(dataSolicitada.getTime())) {
+              if (dataSolicitada.getDay() === 0) {
+                resposta = mensagens.DOMINGO_NAO_PERMITIDO;
+                agendamentosPendentes.set(from, agendamentoPendente);
+                break;
+              }
               const diaDaSemanaFormatado = dataSolicitada
                 .toLocaleDateString("pt-BR", { weekday: "long" })
                 .toLowerCase();
@@ -840,6 +855,11 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             }
 
             if (dataSolicitada && !isNaN(dataSolicitada.getTime())) {
+              if (dataSolicitada.getDay() === 0) {
+                resposta = mensagens.DOMINGO_NAO_PERMITIDO;
+                agendamentosPendentes.set(from, agendamentoPendente);
+                break;
+              }
               const diaDaSemanaFormatado = dataSolicitada
                 .toLocaleDateString("pt-BR", { weekday: "long" })
                 .toLowerCase();
