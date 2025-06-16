@@ -104,11 +104,15 @@ async function listarDiasDisponiveis(dias = 14) {
 
 function formatarDiaBr(dataStr) {
   const data = new Date(dataStr);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
   const dia = data
     .toLocaleDateString('pt-BR', { weekday: 'long' })
     .replace('-feira', '');
   const dataFmt = data.toLocaleDateString('pt-BR');
-  return `${dia.charAt(0).toUpperCase() + dia.slice(1)} (${dataFmt})`;
+  const diaCapitalizado = dia.charAt(0).toUpperCase() + dia.slice(1);
+  const eHoje = data.toDateString() === hoje.toDateString();
+  return `${eHoje ? 'Hoje' : diaCapitalizado} (${dataFmt})`;
 }
 
 module.exports = {

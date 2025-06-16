@@ -316,9 +316,8 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             .map((d) => `- ${formatarDiaBr(d)}`)
             .join("\n");
 
-          resposta = `Ótimo! Você escolheu *${agendamentoPendente.servicos.join(
-            " e "
-          )}*.\nEscolha um dia para agendar:\n${listaDias}\n\nSe quiser agendar para outra semana, escreva "Próxima semana".`;
+          resposta =
+            `Ótimo! Escolha um dia para agendar seu corte:\n${listaDias}\nSe quiser agendar para uma data mais distante, responda: "Ver mais dias"\nBasta responder com o nome do dia ou a data. Exemplo: "Quinta" ou "20/06".`;
           agendamentoPendente.confirmationStep = "awaiting_day";
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
@@ -339,32 +338,32 @@ app.post("/webhook", originValidator, async (req, res, next) => {
           const diasKeys = Object.keys(agendamentoPendente.diasDisponiveis);
 
           const lower = msgLower;
-          if (lower.includes("próxima")) {
+          if (lower.includes("próxima") || lower.includes("mais")) {
             agendamentoPendente.diaIndex += 6;
           } else if (lower.includes("voltar")) {
             agendamentoPendente.diaIndex = Math.max(0, agendamentoPendente.diaIndex - 6);
           } else {
             let escolhido = null;
-            const dataMatch = msg.match(/(\d{1,2})\/(\d{1,2})/);
-            if (dataMatch) {
-              const d = parseInt(dataMatch[1], 10);
-              const m = parseInt(dataMatch[2], 10);
-              escolhido = diasKeys.find((k) => {
-                const dt = new Date(k);
-                return dt.getDate() === d && dt.getMonth() + 1 === m;
-              });
+            const dataParam =
+              parametros?.date?.stringValue || parametros?.["date-time"]?.stringValue;
+            if (dataParam) {
+              const p = new Date(dataParam);
+              if (!isNaN(p.getTime())) {
+                const dataStr = p.toISOString().slice(0, 10);
+                if (diasKeys.includes(dataStr)) {
+                  escolhido = dataStr;
+                }
+              }
             }
-            if (!escolhido) {
-              for (const k of diasKeys) {
+            if (!escolhido && parametros?.dia_semana?.stringValue) {
+              const diaParam = parametros.dia_semana.stringValue.toLowerCase();
+              escolhido = diasKeys.find((k) => {
                 const nome = new Date(k)
                   .toLocaleDateString("pt-BR", { weekday: "long" })
                   .replace("-feira", "")
                   .toLowerCase();
-                if (lower.includes(nome.split(" ")[0])) {
-                  escolhido = k;
-                  break;
-                }
-              }
+                return nome.startsWith(diaParam);
+              });
             }
             if (escolhido) {
               agendamentoPendente.diaEscolhido = escolhido;
@@ -383,7 +382,8 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             .slice(inicio, inicio + 6)
             .map((d) => `- ${formatarDiaBr(d)}`)
             .join("\n");
-          resposta = `Escolha um dia para agendar:\n${listaDias}\n\nSe quiser agendar para outra semana, escreva "Próxima semana".`;
+          resposta =
+            `Escolha um dia para agendar seu corte:\n${listaDias}\nSe quiser agendar para uma data mais distante, responda: "Ver mais dias"`;
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
         }
@@ -417,37 +417,21 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             // Usuário escolheu por número
             diaHorario = horarios[escolhaNumero].dia_horario;
           } else {
-            // Usuário tentou informar dia e hora
-            const diaSemanaMatch = msg
-              .toLowerCase()
-              .match(/(segunda|terça|quarta|quinta|sexta|sábado|domingo)/);
-            const horaMatch = msg.match(
-              /\d{1,2}(?::\d{2})?(?:\s*(?:h|horas?|às))?/i
-            );
+            const diaSemanaParam = parametros?.dia_semana?.stringValue?.toLowerCase();
+            const horaParam = parametros?.time?.stringValue;
+            const dateTimeParam = parametros?.["date-time"]?.stringValue;
 
-            if (diaSemanaMatch && horaMatch) {
-              dataSolicitada = getDateFromWeekdayAndTime(
-                diaSemanaMatch[0],
-                horaMatch[0].replace(/h|horas?|às/i, "").trim()
-              );
-            } else if (parametros?.["date-time"]?.stringValue) {
-              // Se o Dialogflow detectou um @sys.date-time
-              dataSolicitada = new Date(parametros["date-time"].stringValue);
-            } else if (msg.match(/\d{1,2}:\d{2}/)) {
-              // Se o usuário digitou apenas um horário (ex: "10:00")
-              const [hora, minuto = "00"] = msg
-                .match(/\d{1,2}:\d{2}/)[0]
-                .split(":");
-              dataSolicitada = new Date();
-              dataSolicitada.setHours(
-                parseInt(hora, 10),
-                parseInt(minuto, 10),
-                0,
-                0
-              );
-              // Se o horário já passou hoje, sugere para o dia seguinte
-              if (dataSolicitada < new Date()) {
-                dataSolicitada.setDate(dataSolicitada.getDate() + 1);
+            if (diaSemanaParam && horaParam) {
+              dataSolicitada = getDateFromWeekdayAndTime(diaSemanaParam, horaParam);
+            } else if (dateTimeParam) {
+              dataSolicitada = new Date(dateTimeParam);
+            } else if (horaParam) {
+              const h = new Date();
+              const t = new Date(horaParam);
+              if (!isNaN(t.getTime())) {
+                h.setHours(t.getHours(), t.getMinutes(), 0, 0);
+                if (h < new Date()) h.setDate(h.getDate() + 1);
+                dataSolicitada = h;
               }
             }
 
@@ -530,24 +514,31 @@ app.post("/webhook", originValidator, async (req, res, next) => {
               .slice(agendamentoPendente.diaIndex, agendamentoPendente.diaIndex + 6)
               .map((d) => `- ${formatarDiaBr(d)}`)
               .join("\n");
-            resposta = `Escolha um dia para agendar:\n${listaDias}\n\nSe quiser agendar para outra semana, escreva "Próxima semana".`;
+            resposta =
+              `Escolha um dia para agendar seu corte:\n${listaDias}\nSe quiser agendar para uma data mais distante, responda: "Ver mais dias"`;
             break;
           }
 
-          const horariosDia = agendamentoPendente.diasDisponiveis[agendamentoPendente.diaEscolhido];
+          const horariosDia =
+            agendamentoPendente.diasDisponiveis[agendamentoPendente.diaEscolhido];
           let horaEscolhida = null;
           const ind = parseInt(msg) - 1;
           if (!isNaN(ind) && horariosDia[ind]) {
             horaEscolhida = horariosDia[ind];
-          } else {
-            const matchHora = msg.match(/\d{1,2}:\d{2}/);
-            if (matchHora && horariosDia.includes(matchHora[0])) {
-              horaEscolhida = matchHora[0];
+          } else if (parametros?.time?.stringValue || parametros?.["date-time"]?.stringValue) {
+            const timeStr =
+              parametros?.time?.stringValue || parametros?.["date-time"]?.stringValue;
+            const t = new Date(timeStr);
+            if (!isNaN(t.getTime())) {
+              const hora = t.toTimeString().slice(0, 5);
+              if (horariosDia.includes(hora)) {
+                horaEscolhida = hora;
+              }
             }
           }
 
           if (!horaEscolhida) {
-            resposta = `Escolha um horário válido ou digite "Voltar" para escolher outro dia.\n${horariosDia
+            resposta = `Horário inválido. Tente outro ou digite "Voltar".\n${horariosDia
               .map((h, i) => `${i + 1}. ${h}`)
               .join("\n")}`;
             break;
@@ -830,36 +821,21 @@ app.post("/webhook", originValidator, async (req, res, next) => {
           if (!isNaN(escolhaNumero) && horarios[escolhaNumero]) {
             diaHorario = horarios[escolhaNumero].dia_horario;
           } else {
-            const diaSemanaMatch = msg
-              .toLowerCase()
-              .match(/(segunda|terça|quarta|quinta|sexta|sábado|domingo)/);
-            const horaMatch = msg.match(
-              /\d{1,2}(?::\d{2})?(?:\s*(?:h|horas?|às))?/i
-            );
-            const diaSemanaParam =
-              parametros?.dia_semana?.stringValue?.toLowerCase();
+            const diaSemanaParam = parametros?.dia_semana?.stringValue?.toLowerCase();
+            const horaParam = parametros?.time?.stringValue;
+            const dateTimeParam = parametros?.["date-time"]?.stringValue;
 
-            if ((diaSemanaMatch || diaSemanaParam) && horaMatch) {
-              const diaSemanaForParse = diaSemanaParam || diaSemanaMatch[0];
-              dataSolicitada = getDateFromWeekdayAndTime(
-                diaSemanaForParse,
-                horaMatch[0].replace(/h|horas?|às/i, "").trim()
-              );
-            } else if (parametros?.["date-time"]?.stringValue) {
-              dataSolicitada = new Date(parametros["date-time"].stringValue);
-            } else if (msg.match(/\d{1,2}:\d{2}/)) {
-              const [hora, minuto = "00"] = msg
-                .match(/\d{1,2}:\d{2}/)[0]
-                .split(":");
-              dataSolicitada = new Date();
-              dataSolicitada.setHours(
-                parseInt(hora, 10),
-                parseInt(minuto, 10),
-                0,
-                0
-              );
-              if (dataSolicitada < new Date()) {
-                dataSolicitada.setDate(dataSolicitada.getDate() + 1);
+            if (diaSemanaParam && horaParam) {
+              dataSolicitada = getDateFromWeekdayAndTime(diaSemanaParam, horaParam);
+            } else if (dateTimeParam) {
+              dataSolicitada = new Date(dateTimeParam);
+            } else if (horaParam) {
+              const h = new Date();
+              const t = new Date(horaParam);
+              if (!isNaN(t.getTime())) {
+                h.setHours(t.getHours(), t.getMinutes(), 0, 0);
+                if (h < new Date()) h.setDate(h.getDate() + 1);
+                dataSolicitada = h;
               }
             }
 
