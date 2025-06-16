@@ -53,16 +53,16 @@ async function listarHorariosDisponiveis(data) {
 
 /**
  * Cria um evento de agendamento no Google Calendar
- * @param {{cliente: string, servico: string, horario: string}} dados
+ * @param {{cliente: string, servicos: string[], horario: string}} dados
  * @returns {Promise<object>} Dados do evento criado
  */
-async function criarAgendamento({ cliente, servico, horario }) {
+async function criarAgendamento({ cliente, servicos, horario }) {
   const inicio = new Date(horario);
   const fim = new Date(inicio.getTime() + 30 * 60000);
 
   const evento = {
-    summary: `${servico} - ${cliente}`,
-    description: `Cliente: ${cliente}\nServiço: ${servico}`,
+    summary: `${servicos.join(", ")} - ${cliente}`,
+    description: `Cliente: ${cliente}\nServiços: ${servicos.join(", ")}`,
     start: { dateTime: inicio.toISOString(), timeZone: TIME_ZONE },
     end: { dateTime: fim.toISOString(), timeZone: TIME_ZONE },
   };
