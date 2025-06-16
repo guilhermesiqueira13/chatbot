@@ -1,16 +1,17 @@
-const { google } = require('googleapis');
-const path = require('path');
+const { google } = require("googleapis");
+const path = require("path");
 
-const CALENDAR_ID = 'YOUR_BOT_CALENDAR_ID'; // ID do calendário exclusivo do bot
-const TIME_ZONE = 'America/Sao_Paulo';
+const CALENDAR_ID =
+  "99435b27c68a7a48eca3aa3ab9770b8d0207851464d88c89e55c763bfca69c0a@group.calendar.google.com"; // ID do calendário exclusivo do bot
+const TIME_ZONE = "America/Sao_Paulo";
 
 // Configura autenticação usando a conta de serviço
 const auth = new google.auth.GoogleAuth({
-  keyFile: path.join(__dirname, '..', 'reservai_twilio.json'),
-  scopes: ['https://www.googleapis.com/auth/calendar'],
+  keyFile: path.join(__dirname, "..", "reservai_twilio.json"),
+  scopes: ["https://www.googleapis.com/auth/calendar"],
 });
 
-const calendar = google.calendar({ version: 'v3', auth });
+const calendar = google.calendar({ version: "v3", auth });
 
 /**
  * Lista horários disponíveis das 09h às 18h em intervalos de 30min
@@ -19,7 +20,7 @@ const calendar = google.calendar({ version: 'v3', auth });
  * @returns {Promise<string[]>} horários disponíveis no formato HH:mm
  */
 async function listarHorariosDisponiveis(data) {
-  const [ano, mes, dia] = data.split('-');
+  const [ano, mes, dia] = data.split("-");
   const inicioDia = `${ano}-${mes}-${dia}T00:00:00-03:00`;
   const fimDia = `${ano}-${mes}-${dia}T23:59:59-03:00`;
 
@@ -28,7 +29,7 @@ async function listarHorariosDisponiveis(data) {
     timeMin: inicioDia,
     timeMax: fimDia,
     singleEvents: true,
-    orderBy: 'startTime',
+    orderBy: "startTime",
   });
 
   const eventos = res.data.items || [];
