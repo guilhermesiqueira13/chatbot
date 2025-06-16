@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const dialogflow = require("@google-cloud/dialogflow");
+const fs = require("fs");
+const path = require("path");
 const { agendarServico } = require("./controllers/agendamentoController");
 const {
   formatarDataHorarioBr,
@@ -30,10 +32,20 @@ app.set('trust proxy', 1);
 const port = process.env.PORT || 3000;
 
 // Configuração do Dialogflow
+const keyFilename = process.env.DIALOGFLOW_KEYFILE || path.join(__dirname, 'reservai_twilio.json');
 const sessionClient = new dialogflow.SessionsClient({
-  keyFilename: process.env.DIALOGFLOW_KEYFILE, // Caminho para sua chave de serviço do Dialogflow
+  keyFilename, // Caminho para sua chave de serviço do Dialogflow
 });
-const projectId = process.env.DIALOGFLOW_PROJECT_ID; // ID do seu projeto Dialogflow
+
+let projectId = process.env.DIALOGFLOW_PROJECT_ID;
+if (!projectId) {
+  try {
+    const credentials = JSON.parse(fs.readFileSync(keyFilename, 'utf8'));
+    projectId = credentials.project_id;
+  } catch (err) {
+    console.error('Erro ao ler project_id do arquivo de credenciais:', err);
+  }
+}
 
 // Armazena estados temporários dos agendamentos por usuário
 const agendamentosPendentes = new Map();
@@ -74,10 +86,14 @@ app.post("/webhook", originValidator, async (req, res, next) => {
 
   const msgLower = msg.toLowerCase().trim();
   const sessionId = from;
-  const sessionPath = sessionClient.projectAgentSessionPath(
-    projectId,
-    sessionId
-  );
+  console.log('projectId:', projectId, 'sessionId:', sessionId);
+  if (!projectId) {
+    throw new Error('projectId não definido. Verifique a variável de ambiente DIALOGFLOW_PROJECT_ID ou o arquivo reservai_twilio.json.');
+  }
+  if (!sessionId) {
+    throw new Error('sessionId não definido. Verifique o identificador do usuário (telefone/WhatsApp).');
+  }
+  const sessionPath = sessionClient.projectAgentSessionPath(projectId, sessionId);
   const request = {
     session: sessionPath,
     queryInput: {
