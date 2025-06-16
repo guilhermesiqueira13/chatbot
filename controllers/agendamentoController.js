@@ -6,6 +6,7 @@ const {
 const {
   isValidServico,
   isValidDataHora,
+  isValidNome,
 } = require("../utils/validation");
 const { ValidationError } = require("../utils/errors");
 
@@ -23,7 +24,7 @@ async function ensureGoogleEventIdColumn() {
 }
 
 async function buscarHorariosDisponiveis(data) {
-  if (!isValidDataHora(data)) {
+  if (isNaN(new Date(data).getTime())) {
     throw new ValidationError("Data inválida");
   }
   try {
@@ -46,6 +47,13 @@ async function agendarServico({
   if (!clienteId || isNaN(parseInt(clienteId))) {
     return { success: false, message: "ID do cliente inválido." };
   }
+  if (clienteNome && !isValidNome(clienteNome)) {
+    return {
+      success: false,
+      message:
+        "O nome deve possuir ao menos 3 letras e conter apenas caracteres alfabéticos.",
+    };
+  }
   // Permite string separada por vírgulas ou array de nomes
   let servicos = [];
   if (Array.isArray(servicosNomes)) {
@@ -57,10 +65,18 @@ async function agendarServico({
   }
   servicos = servicos.map((s) => s.trim()).filter((s) => s);
   if (!servicos.length || !servicos.every(isValidServico)) {
-    return { success: false, message: "Serviço inválido." };
+    return {
+      success: false,
+      message:
+        "O serviço selecionado é inválido. Escolha entre 'Corte', 'Barba' ou 'Corte + Barba'.",
+    };
   }
   if (!isValidDataHora(horario)) {
-    return { success: false, message: "Data e hora inválidas." };
+    return {
+      success: false,
+      message:
+        "Data e hora inválidas. Use o formato DD/MM/YYYY HH:mm e escolha um horário futuro.",
+    };
   }
   try {
     await ensureGoogleEventIdColumn();
