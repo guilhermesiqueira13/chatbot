@@ -22,6 +22,7 @@ const {
 const logger = require("./utils/logger");
 const mensagens = require("./utils/mensagensUsuario");
 const originValidator = require("./middlewares/originValidator");
+const { createResponse } = require("./utils/apiResponse");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -134,7 +135,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
               "awaiting_reagendamento_datahora";
             agendamentosPendentes.set(from, estadoAgendamentoPendente);
             processamentoConcluido = true;
-            res.json({ reply: resposta });
+            res.json(createResponse(true, { reply: resposta }, null));
             return;
           }
           break;
@@ -983,7 +984,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
       }
     }
     logger.info("Resposta FINAL a ser enviada ao usuário:", resposta);
-    res.json({ reply: resposta });
+    res.json(createResponse(true, { reply: resposta }, null));
   } catch (error) {
     // Propaga erros não tratados para o middleware global
     logger.error("ERRO GERAL no Dialogflow ou webhook:", error);
@@ -996,7 +997,7 @@ app.use((err, req, res, next) => {
   logger.error('Unhandled error:', err);
   const status = err.status || 500;
   const message = err.message || mensagens.ERRO_GERAL;
-  res.status(status).json({ error: message });
+  res.status(status).json(createResponse(false, null, message));
 });
 
 app.listen(port, () => {

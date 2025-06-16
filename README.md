@@ -20,7 +20,11 @@ Resposta esperada:
 
 ```json
 {
-  "reply": "Mensagem de resposta gerada pelo bot"
+  "success": true,
+  "data": {
+    "reply": "Mensagem de resposta gerada pelo bot"
+  },
+  "message": null
 }
 ```
 
@@ -42,8 +46,11 @@ Resposta esperada:
 ```json
 {
   "success": true,
-  "agendamentoId": 42,
-  "eventId": "abcdef123456"
+  "data": {
+    "agendamentoId": 42,
+    "eventId": "abcdef123456"
+  },
+  "message": "Agendamento realizado com sucesso"
 }
 ```
 
