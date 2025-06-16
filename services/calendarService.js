@@ -1,13 +1,13 @@
+require("dotenv").config();
 const { google } = require("googleapis");
 const path = require("path");
 
-const CALENDAR_ID =
-  "99435b27c68a7a48eca3aa3ab9770b8d0207851464d88c89e55c763bfca69c0a@group.calendar.google.com"; // ID do calendário exclusivo do bot
+const CALENDAR_ID = process.env.CALENDAR_ID; // ID do calendário exclusivo do bot
 const TIME_ZONE = "America/Sao_Paulo";
 
 // Configura autenticação usando a conta de serviço
 const auth = new google.auth.GoogleAuth({
-  keyFile: path.join(__dirname, "..", "reservai_twilio.json"),
+  keyFile: process.env.DIALOGFLOW_KEYFILE,
   scopes: ["https://www.googleapis.com/auth/calendar"],
 });
 
