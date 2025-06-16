@@ -8,7 +8,6 @@ Este projeto fornece um bot de agendamento integrado ao WhatsApp, Dialogflow e G
 
 ```bash
 curl -X POST http://localhost:3000/webhook \
-     -H "Content-Type: application/json" \
      -d '{
        "Body": "Quero agendar corte para amanhã às 14h",
        "From": "whatsapp:+5511999999999",
