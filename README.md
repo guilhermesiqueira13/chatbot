@@ -57,8 +57,8 @@ Resposta esperada:
 ## Configurando o Google Calendar
 
 1. Crie uma conta de serviço no Google Cloud e baixe o arquivo de credenciais.
-2. Salve o arquivo com o nome `reservai_twilio.json` na raiz do projeto.
-3. Compartilhe o calendário desejado com o e‑mail da conta de serviço.
+2. Salve os arquivos `reservai_twilio.json` (Dialogflow) e `barbearia-calendar.json` na raiz do projeto.
+3. Compartilhe o calendário desejado com o e‑mail da conta de serviço usado no `barbearia-calendar.json`.
 4. Crie um arquivo `.env` com as variáveis abaixo e ajuste de acordo com seu ambiente:
 
 ```
@@ -67,6 +67,7 @@ DB_USER=root
 DB_PASSWORD=root
 DB_NAME=barbearia
 DIALOGFLOW_KEYFILE=./reservai_twilio.json
+GOOGLE_APPLICATION_CREDENTIALS=./barbearia-calendar.json
 DIALOGFLOW_PROJECT_ID=reservai-twilio-qrps
 CALENDAR_ID=SEU_CALENDARIO_ID
 PORT=3000
