@@ -22,6 +22,7 @@ const {
 const logger = require("./utils/logger");
 const mensagens = require("./utils/mensagensUsuario");
 const originValidator = require("./middlewares/originValidator");
+const rateLimiter = require("./middlewares/rateLimiter");
 const { createResponse } = require("./utils/apiResponse");
 
 const app = express();
@@ -38,6 +39,7 @@ const agendamentosPendentes = new Map();
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(rateLimiter);
 
 const agendamentoRoutes = require("./routes/agendamentoRoutes");
 const clienteRoutes = require("./routes/clienteRoutes");
