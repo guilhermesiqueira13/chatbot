@@ -15,6 +15,7 @@ const { normalizarServico } = require("./utils/stringHelpers");
 const {
   encontrarOuCriarCliente,
   atualizarNomeCliente,
+  padronizarTelefone,
 } = require("./controllers/clienteController");
 const {
   listarAgendamentosAtivos,
@@ -109,7 +110,8 @@ app.post("/webhook", originValidator, async (req, res, next) => {
     let intent = response.queryResult.intent?.displayName || "default";
     const parametros = response.queryResult.parameters?.fields || {};
 
-    let cliente = await encontrarOuCriarCliente(from, profileName);
+    const telefoneUsuario = padronizarTelefone(from.replace(/^whatsapp:/, ""));
+    let cliente = await encontrarOuCriarCliente(telefoneUsuario, profileName);
     const estadoAgendamentoPendente = agendamentosPendentes.get(from);
 
     // --- Lógica para forçar intents com base no estado ---
@@ -1018,6 +1020,9 @@ app.post("/webhook", originValidator, async (req, res, next) => {
 // Middleware global de tratamento de erros
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.stack || err.message || JSON.stringify(err));
+  if (err.status === 400 || err.name === 'ValidationError') {
+    return res.status(400).json({ success: false, message: err.message });
+  }
   res.status(500).json({ success: false, message: 'Erro interno do servidor' });
 });
 
