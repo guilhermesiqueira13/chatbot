@@ -8,8 +8,12 @@ const CALENDAR_ID =
 const TIME_ZONE = "America/Sao_Paulo";
 
 // Configura autenticação usando a conta de serviço
+const keyFile =
+  process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+  path.join(__dirname, "..", "barbearia-calendar.json");
+
 const auth = new google.auth.GoogleAuth({
-  keyFile: process.env.DIALOGFLOW_KEYFILE,
+  keyFile,
   scopes: ["https://www.googleapis.com/auth/calendar"],
 });
 
