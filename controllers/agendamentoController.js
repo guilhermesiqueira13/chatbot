@@ -35,11 +35,27 @@ async function buscarHorariosDisponiveis(data) {
   }
 }
 
-async function agendarServico({ clienteId, clienteNome, servicoNome, horario }) {
+async function agendarServico({
+  clienteId,
+  clienteNome,
+  servicoNome,
+  servicosNomes,
+  horario,
+}) {
   if (!clienteId || isNaN(parseInt(clienteId))) {
     return { success: false, message: "ID do cliente inválido." };
   }
-  if (!isValidServico(servicoNome)) {
+  // Permite string separada por vírgulas ou array de nomes
+  let servicos = [];
+  if (Array.isArray(servicosNomes)) {
+    servicos = servicosNomes;
+  } else if (Array.isArray(servicoNome)) {
+    servicos = servicoNome;
+  } else if (typeof servicoNome === "string") {
+    servicos = servicoNome.split(/,\s*/);
+  }
+  servicos = servicos.map((s) => s.trim()).filter((s) => s);
+  if (!servicos.length || !servicos.every(isValidServico)) {
     return { success: false, message: "Serviço inválido." };
   }
   if (!isValidDataHora(horario)) {
@@ -50,7 +66,7 @@ async function agendarServico({ clienteId, clienteNome, servicoNome, horario }) 
 
     const evento = await criarAgendamento({
       cliente: clienteNome,
-      servico: servicoNome,
+      servicos,
       horario,
     });
 
@@ -61,9 +77,9 @@ async function agendarServico({ clienteId, clienteNome, servicoNome, horario }) 
     );
     const agendamentoId = result.insertId;
 
-    // Aqui assumimos que servicoIds é um único ID referente a servicoNome
-    // para manter compatibilidade com a estrutura original
-    // Caso haja múltiplos serviços, ajuste conforme necessário
+    // A associação de vários serviços ao agendamento deve ser feita em outra
+    // camada (agendamentos_servicos). Mantemos somente a criação do evento no
+    // Calendar aqui.
 
     return { success: true, agendamentoId, eventId: evento.id };
   } catch (error) {

@@ -1,12 +1,12 @@
-const pool = { query: jest.fn() };
-jest.mock('../db', () => pool);
+jest.mock('../db', () => ({ query: jest.fn() }));
+const pool = require('../db');
 
-const calendarService = {
+jest.mock('../services/calendarService', () => ({
   listarHorariosDisponiveis: jest.fn(),
   criarAgendamento: jest.fn(),
   cancelarAgendamento: jest.fn(),
-};
-jest.mock('../services/calendarService', () => calendarService);
+}));
+const calendarService = require('../services/calendarService');
 
 const { agendarServico } = require('../controllers/agendamentoController');
 
@@ -28,11 +28,15 @@ describe('agendamentoController', () => {
     const resp = await agendarServico({
       clienteId: 1,
       clienteNome: 'Jose',
-      servicoNome: 'corte',
+      servicosNomes: ['corte', 'barba'],
       horario: '2024-01-01T09:00:00-03:00'
     });
 
-    expect(calendarService.criarAgendamento).toHaveBeenCalled();
+    expect(calendarService.criarAgendamento).toHaveBeenCalledWith({
+      cliente: 'Jose',
+      servicos: ['corte', 'barba'],
+      horario: '2024-01-01T09:00:00-03:00'
+    });
     expect(resp).toEqual({ success: true, agendamentoId: 7, eventId: 'e1' });
   });
 });

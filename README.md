@@ -36,7 +36,7 @@ curl -X POST http://localhost:3000/api/agendamento/agendar \
      -d '{
        "clienteId": 1,
        "clienteNome": "João",
-       "servicoNome": "Corte",
+       "servicosNomes": ["Corte", "Barba"],
        "horario": "2024-06-15T14:00:00-03:00"
      }'
 ```

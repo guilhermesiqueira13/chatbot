@@ -1,18 +1,21 @@
-const connection = {
-  beginTransaction: jest.fn(),
-  query: jest.fn(),
-  commit: jest.fn(),
-  rollback: jest.fn(),
-  release: jest.fn(),
-};
-const pool = { getConnection: jest.fn(() => connection), query: jest.fn() };
-jest.mock('../db', () => pool);
+jest.mock('../db', () => {
+  const connection = {
+    beginTransaction: jest.fn(),
+    query: jest.fn(),
+    commit: jest.fn(),
+    rollback: jest.fn(),
+    release: jest.fn(),
+  };
+  return { getConnection: jest.fn(() => connection), query: jest.fn(), __connection: connection };
+});
+const pool = require('../db');
+const connection = pool.__connection;
 
-const calendarService = {
+jest.mock('../services/calendarService', () => ({
   cancelarAgendamento: jest.fn(),
   criarAgendamento: jest.fn(),
-};
-jest.mock('../services/calendarService', () => calendarService);
+}));
+const calendarService = require('../services/calendarService');
 
 const { cancelarAgendamento } = require('../controllers/gerenciamentoController');
 
