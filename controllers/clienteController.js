@@ -10,10 +10,14 @@ const logger = require("../utils/logger");
 // Tenta usar profileName do Twilio, se disponível.
 async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
   if (!isValidTelefone(telefone)) {
-    throw new ValidationError("Telefone inválido");
+    throw new ValidationError(
+      "O número de telefone deve estar no formato +55DDDDDDDDDDD."
+    );
   }
   if (profileName && !isValidNome(profileName)) {
-    throw new ValidationError("Nome inválido");
+    throw new ValidationError(
+      "O nome deve possuir ao menos 3 letras e conter apenas caracteres alfabéticos."
+    );
   }
   let client;
   try {
@@ -67,7 +71,9 @@ async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
 // Atualiza o nome de um cliente existente.
 async function atualizarNomeCliente(clienteId, novoNome) {
   if (!isValidNome(novoNome)) {
-    throw new ValidationError("Nome inválido");
+    throw new ValidationError(
+      "O nome deve possuir ao menos 3 letras e conter apenas caracteres alfabéticos."
+    );
   }
   let client;
   logger.info("aqui");

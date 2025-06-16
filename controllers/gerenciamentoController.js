@@ -79,7 +79,11 @@ async function listarAgendamentosAtivos(clienteId) {
 
 async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
   if (!isValidDataHora(novoHorario)) {
-    return { success: false, message: "Data e hora inválidas." };
+    return {
+      success: false,
+      message:
+        "Data e hora inválidas. Use o formato DD/MM/YYYY HH:mm e escolha um horário futuro.",
+    };
   }
   try {
     await pool.query("START TRANSACTION");

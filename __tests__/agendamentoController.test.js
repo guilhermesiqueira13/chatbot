@@ -29,13 +29,13 @@ describe('agendamentoController', () => {
       clienteId: 1,
       clienteNome: 'Jose',
       servicosNomes: ['corte', 'barba'],
-      horario: '2024-01-01T09:00:00-03:00'
+      horario: '2030-01-01T09:00:00-03:00'
     });
 
     expect(calendarService.criarAgendamento).toHaveBeenCalledWith({
       cliente: 'Jose',
       servicos: ['corte', 'barba'],
-      horario: '2024-01-01T09:00:00-03:00'
+      horario: '2030-01-01T09:00:00-03:00'
     });
     expect(resp).toEqual({ success: true, agendamentoId: 7, eventId: 'e1' });
   });
