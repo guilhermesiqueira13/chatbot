@@ -33,9 +33,10 @@ async function cancelarAgendamento(agendamentoId, googleEventId) {
 
     try {
       await cancelarEvento(eventId);
-    } catch (e) {
-      logger.error("Erro ao cancelar evento no Google Calendar:", e);
-    }
+  } catch (e) {
+    console.error('Erro:', e, e && e.stack, JSON.stringify(e));
+    logger.error("Erro ao cancelar evento no Google Calendar:", e);
+  }
 
     await connection.query('UPDATE agendamentos SET status = "cancelado" WHERE id = ?', [agendamentoId]);
 
@@ -45,6 +46,7 @@ async function cancelarAgendamento(agendamentoId, googleEventId) {
   } catch (error) {
     await connection.rollback();
     await connection.release();
+    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
     logger.error("Erro em cancelarAgendamento:", error);
     return {
       success: false,
@@ -69,6 +71,7 @@ async function listarAgendamentosAtivos(clienteId) {
     );
     return rows;
   } catch (error) {
+    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
     logger.error("Erro ao listar agendamentos ativos:", error);
     throw new Error("Erro ao listar agendamentos ativos.");
   }
@@ -99,9 +102,10 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
 
     try {
       await cancelarEvento(eventId);
-    } catch (e) {
-      logger.error("Erro ao cancelar evento antigo no Google Calendar:", e);
-    }
+  } catch (e) {
+    console.error('Erro:', e, e && e.stack, JSON.stringify(e));
+    logger.error("Erro ao cancelar evento antigo no Google Calendar:", e);
+  }
 
     const evento = await criarAgendamento({ cliente: "", servico: "", horario: novoHorario });
 
@@ -114,6 +118,7 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
     return { success: true };
   } catch (error) {
     await pool.query("ROLLBACK");
+    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
     logger.error("Erro ao reagendar:", error);
     return {
       success: false,

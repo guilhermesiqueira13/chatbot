@@ -22,6 +22,7 @@ router.post('/buscar-ou-criar', async (req, res, next) => {
       createResponse(true, cliente, "Cliente encontrado ou criado com sucesso")
     );
   } catch (err) {
+    console.error('Erro:', err, err && err.stack, JSON.stringify(err));
     if (err instanceof ValidationError) {
       return res.status(400).json(createResponse(false, null, err.message));
     }
@@ -47,6 +48,7 @@ router.put('/:id/nome', async (req, res, next) => {
     }
     res.json(createResponse(true, cliente, "Nome atualizado com sucesso"));
   } catch (err) {
+    console.error('Erro:', err, err && err.stack, JSON.stringify(err));
     if (err instanceof ValidationError) {
       return res.status(400).json(createResponse(false, null, err.message));
     }
