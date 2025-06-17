@@ -7,6 +7,7 @@ const {
 } = require("../controllers/clienteController");
 const { ValidationError } = require("../utils/errors");
 const { createResponse } = require("../utils/apiResponse");
+const logger = require("../utils/logger");
 
 // Cria ou retorna cliente existente a partir do telefone
 router.post('/buscar-ou-criar', async (req, res, next) => {
@@ -22,7 +23,7 @@ router.post('/buscar-ou-criar', async (req, res, next) => {
       createResponse(true, cliente, "Cliente encontrado ou criado com sucesso")
     );
   } catch (err) {
-    console.error('Erro:', err, err && err.stack, JSON.stringify(err));
+    logger.error(null, err);
     if (err instanceof ValidationError) {
       return res.status(400).json(createResponse(false, null, err.message));
     }
@@ -48,7 +49,7 @@ router.put('/:id/nome', async (req, res, next) => {
     }
     res.json(createResponse(true, cliente, "Nome atualizado com sucesso"));
   } catch (err) {
-    console.error('Erro:', err, err && err.stack, JSON.stringify(err));
+    logger.error(null, err);
     if (err instanceof ValidationError) {
       return res.status(400).json(createResponse(false, null, err.message));
     }

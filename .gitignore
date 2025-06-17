@@ -2,3 +2,4 @@ node_modules/
 reservai_twilio.json
 package-lock.json
 barbearia-calendar.json
+logs/

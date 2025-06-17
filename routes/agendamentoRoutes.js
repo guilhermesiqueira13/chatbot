@@ -8,6 +8,7 @@ const {
 const { cancelarAgendamento } = require("../controllers/gerenciamentoController");
 const { ValidationError } = require("../utils/errors");
 const { createResponse } = require("../utils/apiResponse");
+const logger = require("../utils/logger");
 
 // Lista horários disponíveis para uma data (YYYY-MM-DD)
 router.get('/horarios', async (req, res, next) => {
@@ -22,7 +23,7 @@ router.get('/horarios', async (req, res, next) => {
     const horarios = await buscarHorariosDisponiveis(data);
     res.json(createResponse(true, horarios, "Horários disponíveis"));
   } catch (err) {
-    console.error('Erro:', err, err && err.stack, JSON.stringify(err));
+    logger.error(null, err);
     if (err instanceof ValidationError) {
       return res.status(400).json(createResponse(false, null, err.message));
     }
@@ -50,7 +51,7 @@ router.post('/agendar', async (req, res, next) => {
       }, "Agendamento realizado com sucesso")
     );
   } catch (err) {
-    console.error('Erro:', err, err && err.stack, JSON.stringify(err));
+    logger.error(null, err);
     if (err instanceof ValidationError) {
       return res.status(400).json(createResponse(false, null, err.message));
     }
@@ -74,7 +75,7 @@ router.post('/cancelar', async (req, res, next) => {
     }
     res.json(createResponse(true, null, "Agendamento cancelado"));
   } catch (err) {
-    console.error('Erro:', err, err && err.stack, JSON.stringify(err));
+    logger.error(null, err);
     next(err);
   }
 });
