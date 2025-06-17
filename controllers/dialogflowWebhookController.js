@@ -35,6 +35,17 @@ const projectId = process.env.DIALOGFLOW_PROJECT_ID;
 
 const agendamentosPendentes = new Map();
 
+function getEstado(from) {
+  return agendamentosPendentes.get(from) || { telefone: from };
+}
+
+function setEstado(from, updates) {
+  const atual = agendamentosPendentes.get(from) || { telefone: from };
+  const novo = { ...atual, ...updates };
+  agendamentosPendentes.set(from, novo);
+  return novo;
+}
+
 const SERVICOS_VALIDOS = {
   corte: { id: 1, nome: 'Corte' },
   barba: { id: 2, nome: 'Barba' },
@@ -79,7 +90,7 @@ async function handleEscolhaServico({ from, parametros }) {
   const diasKeys = Object.keys(diasDisponiveis);
   if (!diasKeys.length) return mensagens.SEM_HORARIOS_DISPONIVEIS;
 
-  agendamentosPendentes.set(from, {
+  setEstado(from, {
     servico: servico.nome,
     servicoId: servico.id,
     diasDisponiveis,
@@ -113,7 +124,7 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
       if (parsed.type === 'verMais') {
         estado.diaIndex += 6;
         const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
-        agendamentosPendentes.set(from, estado);
+        setEstado(from, estado);
         return `Mais opções de dias:\n${listaDias}`;
       }
       if (parsed.type === 'weekday') {
@@ -157,7 +168,7 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
 
     estado.diaEscolhido = escolhido;
     estado.confirmationStep = 'awaiting_time';
-    agendamentosPendentes.set(from, estado);
+    setEstado(from, estado);
 
     const horarios = gerarMensagemHorarios(diasDisp[escolhido]);
     return `Ótimo! Horários disponíveis para ${formatarDiaBr(escolhido)}:\n${horarios}`;
@@ -222,7 +233,7 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
 
     estado.horarioEscolhido = hora;
     estado.confirmationStep = 'awaiting_confirm';
-    agendamentosPendentes.set(from, estado);
+    setEstado(from, estado);
 
     const resumo = formatarDataHorarioBr(`${estado.diaEscolhido}T${hora}:00`);
     return `Confirmar agendamento de *${estado.servico}* em *${resumo}* para *${estado.nome}*?`;
@@ -244,7 +255,7 @@ async function handleInformarNovoNome({ from, msg }) {
   if (clienteAtualizado) {
     estado.nome = clienteAtualizado.nome;
     estado.confirmationStep = 'awaiting_confirm';
-    agendamentosPendentes.set(from, estado);
+    setEstado(from, estado);
     return `Nome atualizado para *${nome}*. Confirma o agendamento?`;
   }
   return mensagens.ERRO_ATUALIZAR_NOME;
@@ -288,7 +299,7 @@ async function handleCancelamento({ from }) {
   const lista = agendamentos
     .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
     .join('\n');
-  agendamentosPendentes.set(from, {
+  setEstado(from, {
     confirmationStep: 'awaiting_cancelar',
     agendamentos,
   });
@@ -307,7 +318,7 @@ async function handleSelecionarCancelamento({ from, msg }) {
   estado.eventId = ag.google_event_id;
   estado.servico = ag.servico;
   estado.confirmationStep = 'awaiting_cancel_confirm';
-  agendamentosPendentes.set(from, estado);
+  setEstado(from, estado);
   return `Confirma o cancelamento de ${ag.servico} em ${formatarDataHorarioBr(ag.horario)}?`;
 }
 
@@ -336,7 +347,7 @@ async function handleReagendar({ from }) {
   const lista = agendamentos
     .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
     .join('\n');
-  agendamentosPendentes.set(from, {
+  setEstado(from, {
     confirmationStep: 'awaiting_reagendamento',
     agendamentos,
   });
@@ -355,7 +366,7 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   estado.eventId = ag.google_event_id;
   estado.servico = ag.servico;
   estado.confirmationStep = 'awaiting_reagendamento_data';
-  agendamentosPendentes.set(from, estado);
+  setEstado(from, estado);
   const horarios = await listarTodosHorariosDisponiveis();
   const lista = horarios
     .map((h, i) => `${i + 1}. ${formatarDataHorarioBr(h.dia_horario)}`)
@@ -374,7 +385,7 @@ async function handleEscolhaDataHoraReagendamento({ from, msg }) {
   if (!h) return mensagens.HORARIO_INVALIDO;
   estado.novoHorario = h.dia_horario;
   estado.confirmationStep = 'awaiting_reagendamento_confirm';
-  agendamentosPendentes.set(from, estado);
+  setEstado(from, estado);
   return `Confirma reagendar para ${formatarDataHorarioBr(h.dia_horario)}?`;
 }
 
@@ -398,7 +409,31 @@ async function handleConfirmarReagendamento({ from, msg }) {
 }
 
 /** Fallback para intents não mapeadas */
-async function handleDefault({ fulfillment }) {
+async function handleDefault({ from, fulfillment }) {
+  const estado = agendamentosPendentes.get(from);
+  if (estado) {
+    switch (estado.confirmationStep) {
+      case 'awaiting_day': {
+        const diasDisp = estado.diasDisponiveis || {};
+        const lista = listarPrimeirosDias(diasDisp, estado.diaIndex);
+        return `Escolha um dia válido:\n${lista}`;
+      }
+      case 'awaiting_time': {
+        const horarios = gerarMensagemHorarios(
+          (estado.diasDisponiveis || {})[estado.diaEscolhido] || [],
+        );
+        return `Escolha um horário disponível:\n${horarios}`;
+      }
+      case 'awaiting_confirm': {
+        const resumo = formatarDataHorarioBr(
+          `${estado.diaEscolhido}T${estado.horarioEscolhido}:00`,
+        );
+        return `Confirma o agendamento de *${estado.servico}* em *${resumo}* para *${estado.nome}*?`;
+      }
+      default:
+        break;
+    }
+  }
   return fulfillment || mensagens.NAO_ENTENDI;
 }
 
@@ -446,10 +481,11 @@ async function handleWebhook(req, res) {
 
   const { intent, parameters, fulfillment } = await detectIntent(from, msg);
   logger.dialogflow(intent, parameters);
-  const estado = agendamentosPendentes.get(from) || {};
-  estado.clienteId = cliente.id;
-  estado.nome = cliente.nome;
-  agendamentosPendentes.set(from, estado);
+  const estado = setEstado(from, {
+    clienteId: cliente.id,
+    nome: cliente.nome,
+    telefone: from,
+  });
 
   let resposta;
   try {
@@ -491,7 +527,7 @@ async function handleWebhook(req, res) {
         resposta = await handleConfirmarReagendamento({ from, msg });
         break;
       default:
-        resposta = await handleDefault({ fulfillment });
+        resposta = await handleDefault({ from, fulfillment });
     }
     logger.bot(from, resposta);
     res.json(createResponse(true, { reply: resposta }, null));
