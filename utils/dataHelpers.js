@@ -119,6 +119,15 @@ function formatarDiaBr(dataStr) {
   return `${eHoje ? 'Hoje' : diaCapitalizado} (${dataFmt})`;
 }
 
+function gerarMensagemDias(diasMap, start = 0, count = 6) {
+  const dias = Object.keys(diasMap).slice(start, start + count);
+  return dias.map((d) => `- ${formatarDiaBr(d)}`).join('\n');
+}
+
+function gerarMensagemHorarios(horas) {
+  return horas.map((h, i) => `${i + 1}. ${h}`).join('\n');
+}
+
 module.exports = {
   formatarDataHorarioBr,
   encontrarHorarioProximo,
@@ -126,4 +135,6 @@ module.exports = {
   listarTodosHorariosDisponiveis,
   listarDiasDisponiveis,
   formatarDiaBr,
+  gerarMensagemDias,
+  gerarMensagemHorarios,
 };
