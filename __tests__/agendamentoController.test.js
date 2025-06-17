@@ -23,6 +23,7 @@ describe('agendamentoController', () => {
       return Promise.resolve([]);
     });
 
+    calendarService.listarHorariosDisponiveis.mockResolvedValue(['09:00']);
     calendarService.criarAgendamento.mockResolvedValue({ id: 'e1' });
 
     const resp = await agendarServico({
@@ -38,5 +39,21 @@ describe('agendamentoController', () => {
       horario: '2030-01-01T09:00:00-03:00'
     });
     expect(resp).toEqual({ success: true, agendamentoId: 7, eventId: 'e1' });
+  });
+
+  test('agendarServico retorna erro para horario indisponivel', async () => {
+    pool.query.mockResolvedValue([]);
+    calendarService.listarHorariosDisponiveis.mockResolvedValue(['09:00']);
+
+    const resp = await agendarServico({
+      clienteId: 1,
+      clienteNome: 'Jose',
+      servicoNome: 'corte',
+      horario: '2030-01-01T20:00:00-03:00'
+    });
+
+    expect(resp.success).toBe(false);
+    expect(resp.message).toMatch(/Horário inválido/);
+    expect(calendarService.criarAgendamento).not.toHaveBeenCalled();
   });
 });

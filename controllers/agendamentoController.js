@@ -7,8 +7,11 @@ const {
   isValidServico,
   isValidDataHora,
   isValidNome,
+  isDentroHorarioAtendimento,
 } = require("../utils/validation");
 const { ValidationError } = require("../utils/errors");
+
+const mensagens = require("../utils/mensagensUsuario");
 
 const logger = require("../utils/logger");
 // Garante que a coluna google_event_id exista na tabela de agendamentos
@@ -72,13 +75,24 @@ async function agendarServico({
     };
   }
   if (!isValidDataHora(horario)) {
-    return {
-      success: false,
-      message:
-        "Data e hora inválidas. Use o formato DD/MM/YYYY HH:mm e escolha um horário futuro.",
-    };
+    return { success: false, message: mensagens.HORARIO_INVALIDO };
   }
+
+  const horarioDate = new Date(horario);
+  if (!isDentroHorarioAtendimento(horarioDate)) {
+    return { success: false, message: mensagens.HORARIO_INVALIDO };
+  }
+
   try {
+    const dataStr = horarioDate.toISOString().slice(0, 10);
+    const disponiveis = await listarHorariosDisponiveis(dataStr);
+    let horaStr = horarioDate.toTimeString().slice(0, 5);
+    const match = typeof horario === 'string' && horario.match(/T(\d{2}:\d{2})/);
+    if (match) horaStr = match[1];
+    if (!disponiveis.includes(horaStr)) {
+      return { success: false, message: mensagens.HORARIO_INVALIDO };
+    }
+
     await ensureGoogleEventIdColumn();
 
     const evento = await criarAgendamento({
@@ -104,7 +118,7 @@ async function agendarServico({
     logger.error("Erro ao agendar serviço:", error);
     return {
       success: false,
-      message: "Ops, algo deu errado ao agendar. Tente novamente.",
+      message: mensagens.ERRO_AGENDAR,
     };
   }
 }
