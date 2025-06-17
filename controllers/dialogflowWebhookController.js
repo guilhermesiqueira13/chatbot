@@ -7,6 +7,7 @@ const {
   formatarDiaBr,
   gerarMensagemDias,
   gerarMensagemHorarios,
+  encontrarHorarioProximo,
 } = require('../utils/dataHelpers');
 const { normalizarServico } = require('../utils/stringHelpers');
 const {
@@ -163,7 +164,22 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
 
     if (!hora || !horariosDia.includes(hora)) {
       const lista = gerarMensagemHorarios(horariosDia);
-      return `Horário inválido. Escolha um dos seguintes:\n${lista}`;
+      let sugestao = '';
+      try {
+        const proximos = await listarTodosHorariosDisponiveis(14);
+        const proximo = encontrarHorarioProximo(
+          `${estado.diaEscolhido}T${hora || '00:00'}:00`,
+          proximos,
+        );
+        if (proximo) {
+          sugestao = ` Próximo horário disponível: ${formatarDataHorarioBr(
+            proximo.dia_horario,
+          )}.`;
+        }
+      } catch (e) {
+        logger.error(from, e);
+      }
+      return `Horário inválido.${sugestao}\nEscolha um dos seguintes:\n${lista}`;
     }
 
     estado.horarioEscolhido = hora;
@@ -221,7 +237,8 @@ async function handleConfirmarAgendamento({ from }) {
   agendamentosPendentes.delete(from);
 
   if (!result.success) return mensagens.ERRO_AGENDAR;
-  return `✅ Agendamento confirmado para *${estado.servico}* em *${formatarDataHorarioBr(`${estado.diaEscolhido}T${estado.horarioEscolhido}:00`)}* no nome de *${estado.nome}*`;
+  return `✅ Agendamento confirmado para *${estado.servico}* em *${formatarDataHorarioBr(`${estado.diaEscolhido}T${estado.horarioEscolhido}:00`)}* no nome de *${estado.nome}*.` +
+    " Se precisar reagendar ou cancelar, responda 'Reagendar' ou 'Cancelar'.";
 }
 
 /** Lista agendamentos ativos para cancelamento */
