@@ -8,6 +8,8 @@ const {
   encontrarHorarioProximo,
   getDateFromWeekdayAndTime,
   listarTodosHorariosDisponiveis,
+  listarDiasDisponiveis,
+  formatarDiaBr,
 } = require("../utils/dataHelpers");
 const { normalizarServico } = require("../utils/stringHelpers");
 const {
@@ -129,6 +131,16 @@ router.post("/webhook", async (req, res) => {
             processamentoConcluido = true;
             res.json({ reply: resposta });
             return;
+          }
+          break;
+        case "awaiting_day":
+          if (intent === "default") {
+            intent = "escolha_dia";
+          }
+          break;
+        case "awaiting_time":
+          if (intent === "default") {
+            intent = "escolha_horario";
           }
           break;
         case "confirmar_horario_proximo":
@@ -266,35 +278,37 @@ router.post("/webhook", async (req, res) => {
             agendamentoPendente.servicoIds.push(servicoInfo.id);
           }
 
-          const horarios = await listarTodosHorariosDisponiveis();
-          // Verifica se há horários ou se a busca falhou
-          if (!horarios || !horarios.length) {
+          const diasDisponiveis = await listarDiasDisponiveis(14);
+          const diasKeys = Object.keys(diasDisponiveis);
+          if (!diasKeys.length) {
             resposta =
               "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
             agendamentosPendentes.delete(from);
             break;
           }
 
-          resposta = `Ótimo! Você escolheu *${agendamentoPendente.servicos.join(
-            " e "
-          )}*.\nHorários disponíveis:\n\n${horarios
-            .map((h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`)
-            .join(
-              "\n"
-            )}\n\nDigite o número do horário desejado ou informe um dia e horário (exemplo: Sexta 10:00).`;
-          agendamentoPendente.confirmationStep = "awaiting_date_time";
+          agendamentoPendente.diasDisponiveis = diasDisponiveis;
+          agendamentoPendente.diaIndex = 0;
+          const listaDias = diasKeys
+            .slice(0, 6)
+            .map((d) => `- ${formatarDiaBr(d)}`)
+            .join("\n");
+
+          resposta =
+            `Ótimo! Você escolheu *${agendamentoPendente.servicos.join(
+              " e "
+            )}*.\nEscolha um dia:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+          agendamentoPendente.confirmationStep = "awaiting_day";
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
         }
 
-        case "escolha_datahora": {
+        case "escolha_dia": {
           const agendamentoPendente = agendamentosPendentes.get(from);
-          // Valida se há um agendamento em andamento e serviços selecionados
           if (
             !agendamentoPendente ||
-            !agendamentoPendente.servicos.length ||
-            !Array.isArray(agendamentoPendente.servicoIds) ||
-            !agendamentoPendente.servicoIds.length
+            agendamentoPendente.confirmationStep !== "awaiting_day" ||
+            !agendamentoPendente.diasDisponiveis
           ) {
             resposta =
               "Escolha um serviço antes (Corte, Barba ou Sobrancelha). Qual prefere?";
@@ -302,116 +316,127 @@ router.post("/webhook", async (req, res) => {
             break;
           }
 
-          const horarios = await listarTodosHorariosDisponiveis();
-          if (!horarios || !horarios.length) {
-            resposta =
-              "Não temos horários disponíveis no momento. Tente novamente mais tarde!";
-            agendamentosPendentes.delete(from);
-            break;
-          }
+          const diasKeys = Object.keys(agendamentoPendente.diasDisponiveis);
 
-          let diaHorario;
-          const escolhaNumero = parseInt(msg) - 1; // Ajusta para índice 0
-          let dataSolicitada = null;
-
-          if (!isNaN(escolhaNumero) && horarios[escolhaNumero]) {
-            // Usuário escolheu por número
-            diaHorario = horarios[escolhaNumero].dia_horario;
+          const lower = msgLower;
+          if (lower.includes("próxima") || lower.includes("mais")) {
+            agendamentoPendente.diaIndex += 6;
+          } else if (lower.includes("voltar")) {
+            agendamentoPendente.diaIndex = Math.max(0, agendamentoPendente.diaIndex - 6);
           } else {
-            // Usuário tentou informar dia e hora
-            const diaSemanaMatch = msg
-              .toLowerCase()
-              .match(/(segunda|terça|quarta|quinta|sexta|sábado|domingo)/);
-            const horaMatch = msg.match(
-              /\d{1,2}(?::\d{2})?(?:\s*(?:h|horas?|às))?/i
-            );
-
-            if (diaSemanaMatch && horaMatch) {
-              dataSolicitada = getDateFromWeekdayAndTime(
-                diaSemanaMatch[0],
-                horaMatch[0].replace(/h|horas?|às/i, "").trim()
-              );
-            } else if (parametros?.["date-time"]?.stringValue) {
-              // Se o Dialogflow detectou um @sys.date-time
-              dataSolicitada = new Date(parametros["date-time"].stringValue);
-            } else if (msg.match(/\d{1,2}:\d{2}/)) {
-              // Se o usuário digitou apenas um horário (ex: "10:00")
-              const [hora, minuto = "00"] = msg
-                .match(/\d{1,2}:\d{2}/)[0]
-                .split(":");
-              dataSolicitada = new Date();
-              dataSolicitada.setHours(
-                parseInt(hora, 10),
-                parseInt(minuto, 10),
-                0,
-                0
-              );
-              // Se o horário já passou hoje, sugere para o dia seguinte
-              if (dataSolicitada < new Date()) {
-                dataSolicitada.setDate(dataSolicitada.getDate() + 1);
-              }
-            }
-
-            if (dataSolicitada && !isNaN(dataSolicitada.getTime())) {
-              const diaDaSemanaFormatado = dataSolicitada
-                .toLocaleDateString("pt-BR", { weekday: "long" })
-                .toLowerCase();
-              const horaFormatada = dataSolicitada.toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false,
-              });
-
-              const horarioExato = horarios.find(
-                (h) => new Date(h.dia_horario).getTime() === dataSolicitada.getTime()
-              );
-
-              if (horarioExato) {
-                diaHorario = horarioExato.dia_horario;
-              } else {
-                const horarioMaisProximo = encontrarHorarioProximo(
-                  dataSolicitada.toISOString(),
-                  horarios
-                );
-                if (horarioMaisProximo) {
-                  resposta = `O horário *${diaDaSemanaFormatado} às ${horaFormatada}* não está disponível. O mais próximo é *${formatarDataHorarioBr(
-                    horarioMaisProximo.dia_horario
-                  )}*. Deseja escolher este? Responda 'Sim' ou escolha outro horário.`;
-                  agendamentosPendentes.set(from, {
-                    ...agendamentoPendente,
-                    confirmationStep: "confirmar_horario_proximo",
-                    diaHorarioProximo: horarioMaisProximo.dia_horario,
-                  });
-                  break;
-                } else {
-                  resposta = `Nenhum horário disponível próximo a *${diaDaSemanaFormatado} às ${horaFormatada}*. Escolha outro:\n\n${horarios
-                    .map((h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`)
-                    .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
+            let escolhido = null;
+            const dataParam =
+              parametros?.date?.stringValue || parametros?.["date-time"]?.stringValue;
+            if (dataParam) {
+              const p = new Date(dataParam);
+              if (!isNaN(p.getTime())) {
+                if (p.getDay() === 0) {
+                  resposta = "Não agendamos aos domingos. Escolha outro dia.";
+                  agendamentosPendentes.set(from, agendamentoPendente);
                   break;
                 }
+                const dataStr = p.toISOString().slice(0, 10);
+                if (diasKeys.includes(dataStr)) {
+                  escolhido = dataStr;
+                }
               }
-            } else {
-              resposta = `Formato inválido. Por favor, escolha um número da lista ou informe um dia e horário (exemplo: Sexta 10:00).\n\nHorários disponíveis:\n\n${horarios
-                .map(
-                  (h, index) => `${index + 1}. *${formatarDataHorarioBr(h.dia_horario)}*`
-                )
-                .join("\n")}`;
+            }
+            if (!escolhido && parametros?.dia_semana?.stringValue) {
+              const diaParam = parametros.dia_semana.stringValue.toLowerCase();
+              if ("domingo".startsWith(diaParam)) {
+                resposta = "Não agendamos aos domingos. Escolha outro dia.";
+                agendamentosPendentes.set(from, agendamentoPendente);
+                break;
+              }
+              escolhido = diasKeys.find((k) => {
+                const nome = new Date(k)
+                  .toLocaleDateString("pt-BR", { weekday: "long" })
+                  .replace("-feira", "")
+                  .toLowerCase();
+                return nome.startsWith(diaParam);
+              });
+            }
+            if (escolhido) {
+              agendamentoPendente.diaEscolhido = escolhido;
+              const horariosDia = agendamentoPendente.diasDisponiveis[escolhido];
+              agendamentoPendente.confirmationStep = "awaiting_time";
+              agendamentosPendentes.set(from, agendamentoPendente);
+              resposta = `Ótimo, você escolheu ${formatarDiaBr(escolhido)}. Esses são os horários disponíveis:\n${horariosDia
+                .map((h, i) => `- ${h}`)
+                .join("\n")}\nDigite o horário desejado ou "Voltar" para escolher outro dia.`;
               break;
             }
           }
 
-          // Se um horário válido foi escolhido/encontrado, atualiza o estado
-          agendamentoPendente.dia_horario = diaHorario;
+          const inicio = agendamentoPendente.diaIndex;
+          const listaDias = diasKeys
+            .slice(inicio, inicio + 6)
+            .map((d) => `- ${formatarDiaBr(d)}`)
+            .join("\n");
+          resposta =
+            `Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+          agendamentosPendentes.set(from, agendamentoPendente);
+          break;
+        }
 
-          // O objeto 'cliente' já está atualizado no início do webhook
+        case "escolha_horario": {
+          const agendamentoPendente = agendamentosPendentes.get(from);
+          if (
+            !agendamentoPendente ||
+            agendamentoPendente.confirmationStep !== "awaiting_time" ||
+            !agendamentoPendente.diaEscolhido
+          ) {
+            resposta =
+              "Nenhum agendamento em andamento ou etapa incorreta. Quer agendar um serviço?";
+            agendamentosPendentes.delete(from);
+            break;
+          }
+
+          if (msgLower.includes("voltar")) {
+            agendamentoPendente.confirmationStep = "awaiting_day";
+            agendamentosPendentes.set(from, agendamentoPendente);
+            const diasKeys = Object.keys(agendamentoPendente.diasDisponiveis);
+            const listaDias = diasKeys
+              .slice(agendamentoPendente.diaIndex, agendamentoPendente.diaIndex + 6)
+              .map((d) => `- ${formatarDiaBr(d)}`)
+              .join("\n");
+            resposta =
+              `Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+            break;
+          }
+
+          const horariosDia =
+            agendamentoPendente.diasDisponiveis[agendamentoPendente.diaEscolhido];
+          let horaEscolhida = null;
+          const ind = parseInt(msg) - 1;
+          if (!isNaN(ind) && horariosDia[ind]) {
+            horaEscolhida = horariosDia[ind];
+          } else if (parametros?.time?.stringValue || parametros?.["date-time"]?.stringValue) {
+            const timeStr =
+              parametros?.time?.stringValue || parametros?.["date-time"]?.stringValue;
+            const t = new Date(timeStr);
+            if (!isNaN(t.getTime())) {
+              const hora = t.toTimeString().slice(0, 5);
+              if (horariosDia.includes(hora)) {
+                horaEscolhida = hora;
+              }
+            }
+          }
+
+          if (!horaEscolhida) {
+            resposta = `Horário inválido. Tente outro ou digite "Voltar".\n${horariosDia
+              .map((h, i) => `${i + 1}. ${h}`)
+              .join("\n")}`;
+            break;
+          }
+
+          agendamentoPendente.dia_horario = `${agendamentoPendente.diaEscolhido}T${horaEscolhida}:00`;
           agendamentoPendente.clienteId = cliente.id;
           agendamentoPendente.nomeSugerido = cliente.nome;
-
           agendamentoPendente.confirmationStep = "awaiting_name_choice";
           agendamentosPendentes.set(from, agendamentoPendente);
-
-          const horarioFormatado = formatarDataHorarioBr(diaHorario);
-          resposta = `Você escolheu *${agendamentoPendente.servicos.join()}* para *${horarioFormatado}*.\nO nome que usaremos para o agendamento é *${
+          const horarioFormatadoEscolhido = formatarDataHorarioBr(agendamentoPendente.dia_horario);
+          resposta = `Você escolheu *${agendamentoPendente.servicos.join()}* para *${horarioFormatadoEscolhido}*.\nO nome que usaremos para o agendamento é *${
             cliente.nome
           }*.\nGostaria de manter este nome ou informar outro? (Responda 'Sim' ou 'Trocar')`;
           break;
@@ -895,7 +920,7 @@ router.post("/webhook", async (req, res) => {
             agendamentoPendente.confirmationStep =
               agendamentoPendente.agendamentoId
                 ? "awaiting_reagendamento_datahora" // Volta para escolha de horário para reagendamento
-                : "awaiting_date_time"; // Volta para escolha de horário para novo agendamento
+                : "awaiting_time"; // Volta para escolha de horário para novo agendamento
             delete agendamentoPendente.diaHorarioProximo;
             agendamentosPendentes.set(from, agendamentoPendente);
           }
