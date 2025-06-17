@@ -1,6 +1,6 @@
 const MENSAGENS = {
   BEM_VINDO:
-    "Opa, seja bem-vindo à Barbearia!\nQual serviço deseja agendar?\nCorte\nBarba\n\nSe quiser cancelar digite: 'Cancelar'",
+    "Opa! Bem-vindo à Barbearia. Qual serviço deseja? Corte, Barba ou Sobrancelha.\n(Envie 'Cancelar' para sair)",
   SERVICO_NAO_ENTENDIDO:
     "Não entendi qual serviço você deseja. Escolha entre Corte, Barba ou Sobrancelha.",
   servicoNaoReconhecido: (nome) =>
