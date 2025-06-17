@@ -145,3 +145,6 @@ Para que o bot reconheça a escolha de dias e horários de forma natural, inclua
 - "Vou precisar cancelar o agendamento."
 - "Quero alterar meu horário para 17h."
 - "Consegue reagendar para o próximo sábado?"
+
+### Confirmação e Feedback
+Ao final do fluxo o bot sempre envia uma mensagem de resumo com o serviço, data e horário confirmados. A resposta também lembra que você pode reagendar ou cancelar a qualquer momento respondendo **"Reagendar"** ou **"Cancelar"**. Os agendamentos somente são permitidos de segunda a sábado, das 09h às 18h.
