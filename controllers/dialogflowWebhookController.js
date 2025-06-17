@@ -319,15 +319,18 @@ async function handleWebhook(req, res) {
 
   if (!msg || !from) return res.status(400).send('Requisição inválida.');
 
+  logger.user(from, msg);
+
   let cliente;
   try {
     cliente = await encontrarOuCriarCliente(from, profileName);
   } catch (e) {
-    logger.error('Erro ao buscar/criar cliente:', e);
+    logger.error(from, e);
     return res.json(createResponse(false, null, mensagens.ERRO_GERAL));
   }
 
   const { intent, parameters, fulfillment } = await detectIntent(from, msg);
+  logger.dialogflow(intent, parameters);
   const estado = agendamentosPendentes.get(from) || {};
   estado.clienteId = cliente.id;
   estado.nome = cliente.nome;
@@ -375,9 +378,10 @@ async function handleWebhook(req, res) {
       default:
         resposta = await handleDefault({ fulfillment });
     }
+    logger.bot(from, resposta);
     res.json(createResponse(true, { reply: resposta }, null));
   } catch (error) {
-    logger.error('Erro no handler:', error);
+    logger.error(from, error);
     res.json(createResponse(false, null, mensagens.ERRO_GERAL));
   }
 }

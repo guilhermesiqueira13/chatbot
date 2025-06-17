@@ -25,7 +25,7 @@ app.post("/webhook", originValidator, handleWebhook);
 
 // Middleware global de tratamento de erros
 app.use((err, req, res, next) => {
-  console.error('[ERROR]', err.stack || err.message || JSON.stringify(err));
+  logger.error(null, err);
   if (err.status === 400 || err.name === 'ValidationError') {
     return res.status(400).json(createResponse(false, null, err.message));
   }

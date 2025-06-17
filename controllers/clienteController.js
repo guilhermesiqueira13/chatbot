@@ -74,8 +74,7 @@ async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
     }
     return cliente;
   } catch (error) {
-    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
-    logger.error("Erro ao encontrar ou criar cliente:", error);
+    logger.error(null, error);
     throw error;
   } finally {
     if (client) client.release();
@@ -112,8 +111,7 @@ async function atualizarNomeCliente(clienteId, novoNome) {
     }
     return null;
   } catch (error) {
-    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
-    logger.error("Erro ao atualizar nome do cliente:", error);
+    logger.error(null, error);
     throw error;
   } finally {
     if (client) client.release();

@@ -46,8 +46,7 @@ async function buscarHorariosDisponiveis(data) {
     const horarios = await listarHorariosDisponiveis(data);
     return horarios;
   } catch (error) {
-    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
-    logger.error("Erro ao buscar horários disponíveis:", error);
+    logger.error(null, error);
     throw new Error("Erro ao buscar horários disponíveis.");
   }
 }
@@ -127,8 +126,7 @@ async function agendarServico({
 
     return { success: true, agendamentoId, eventId: evento.id };
   } catch (error) {
-    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
-    logger.error("Erro ao agendar serviço:", error);
+    logger.error(null, error);
     return {
       success: false,
       message: mensagens.ERRO_AGENDAR,

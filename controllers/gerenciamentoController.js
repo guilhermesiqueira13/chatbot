@@ -34,8 +34,7 @@ async function cancelarAgendamento(agendamentoId, googleEventId) {
     try {
       await cancelarEvento(eventId);
   } catch (e) {
-    console.error('Erro:', e, e && e.stack, JSON.stringify(e));
-    logger.error("Erro ao cancelar evento no Google Calendar:", e);
+    logger.error(null, { message: 'Erro ao cancelar evento no Google Calendar: ' + (e.message || e), stack: e.stack });
   }
 
     await connection.query('UPDATE agendamentos SET status = "cancelado" WHERE id = ?', [agendamentoId]);
@@ -46,8 +45,7 @@ async function cancelarAgendamento(agendamentoId, googleEventId) {
   } catch (error) {
     await connection.rollback();
     await connection.release();
-    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
-    logger.error("Erro em cancelarAgendamento:", error);
+    logger.error(null, { message: 'Erro em cancelarAgendamento: ' + (error.message || error), stack: error.stack });
     return {
       success: false,
       message: "Erro interno ao cancelar o agendamento.",
@@ -71,8 +69,7 @@ async function listarAgendamentosAtivos(clienteId) {
     );
     return rows;
   } catch (error) {
-    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
-    logger.error("Erro ao listar agendamentos ativos:", error);
+    logger.error(null, { message: 'Erro ao listar agendamentos ativos: ' + (error.message || error), stack: error.stack });
     throw new Error("Erro ao listar agendamentos ativos.");
   }
 }
@@ -107,8 +104,7 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
     try {
       await cancelarEvento(eventId);
   } catch (e) {
-    console.error('Erro:', e, e && e.stack, JSON.stringify(e));
-    logger.error("Erro ao cancelar evento antigo no Google Calendar:", e);
+    logger.error(null, { message: 'Erro ao cancelar evento antigo no Google Calendar: ' + (e.message || e), stack: e.stack });
   }
 
     const evento = await criarAgendamento({ cliente: "", servico: "", horario: novoHorario });
@@ -122,8 +118,7 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
     return { success: true };
   } catch (error) {
     await pool.query("ROLLBACK");
-    console.error('Erro:', error, error && error.stack, JSON.stringify(error));
-    logger.error("Erro ao reagendar:", error);
+    logger.error(null, { message: 'Erro ao reagendar: ' + (error.message || error), stack: error.stack });
     return {
       success: false,
       message: "Ops, algo deu errado ao reagendar. Tente novamente.",
