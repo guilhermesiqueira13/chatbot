@@ -48,6 +48,14 @@ const MENSAGENS = {
   CONFIRMAR_DESCONHECIDO:
     "Desculpe, não entendi o que você quer confirmar. Por favor, comece o agendamento novamente.",
   NAO_ENTENDI: "Desculpe, não entendi. Pode repetir, por favor?",
+  TELEFONE_INVALIDO:
+    "Telefone inválido. Use o formato +55DDXXXXXXXXX.",
+  SERVICO_INVALIDO:
+    "Serviço inválido. Escolha entre Corte, Barba ou Corte + Barba.",
+  DATAHORA_INVALIDA:
+    "Data ou horário inválido. Escolha um horário futuro de segunda a sábado.",
+  DADOS_OBRIGATORIOS_FALTANDO:
+    "Algumas informações estão faltando. Informe nome, telefone, serviço e horário.",
   ERRO_GERAL: "Ops, algo deu errado. Tente novamente mais tarde.",
 };
 

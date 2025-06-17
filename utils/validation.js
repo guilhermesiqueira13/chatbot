@@ -1,4 +1,5 @@
 // Utility validation functions for controller inputs
+const mensagens = require('./mensagensUsuario');
 
 /**
  * Validate Brazilian phone number. Accepts digits with optional leading '+'.
@@ -81,10 +82,28 @@ function isDentroHorarioAtendimento(dataHora) {
   return h >= 9 && h < 18;
 }
 
+// Valida todos os dados necessários para um agendamento
+function validateRequiredParams({ nome, telefone, servico, dataHora }) {
+  if (!isValidNome(nome)) {
+    return { ok: false, message: mensagens.NOME_INVALIDO };
+  }
+  if (!isValidTelefone(telefone)) {
+    return { ok: false, message: mensagens.TELEFONE_INVALIDO };
+  }
+  if (!isValidServico(servico)) {
+    return { ok: false, message: mensagens.SERVICO_INVALIDO };
+  }
+  if (!isValidDataHora(dataHora)) {
+    return { ok: false, message: mensagens.DATAHORA_INVALIDA };
+  }
+  return { ok: true };
+}
+
 module.exports = {
   isValidTelefone,
   isValidNome,
   isValidServico,
   isValidDataHora,
   isDentroHorarioAtendimento,
+  validateRequiredParams,
 };
