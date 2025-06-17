@@ -26,7 +26,11 @@ const mensagens = require('../utils/mensagensUsuario');
 const logger = require('../utils/logger');
 const { createResponse } = require('../utils/apiResponse');
 const { parseEscolhaDia } = require('../utils/respostaParser');
-const { validateRequiredParams } = require('../utils/validation');
+const {
+  isValidNome,
+  isValidServico,
+  isValidDataHora,
+} = require('../utils/validation');
 
 const sessionClient = new dialogflow.SessionsClient({
   keyFilename: process.env.DIALOGFLOW_KEYFILE,
@@ -36,11 +40,11 @@ const projectId = process.env.DIALOGFLOW_PROJECT_ID;
 const agendamentosPendentes = new Map();
 
 function getEstado(from) {
-  return agendamentosPendentes.get(from) || { telefone: from };
+  return agendamentosPendentes.get(from) || {};
 }
 
 function setEstado(from, updates) {
-  const atual = agendamentosPendentes.get(from) || { telefone: from };
+  const atual = agendamentosPendentes.get(from) || {};
   const novo = { ...atual, ...updates };
   agendamentosPendentes.set(from, novo);
   return novo;
@@ -267,14 +271,12 @@ async function handleConfirmarAgendamento({ from }) {
   if (!estado || estado.confirmationStep !== 'awaiting_confirm')
     return mensagens.AGENDAMENTO_NAO_CONFIRMADO;
 
-  const validation = validateRequiredParams({
-    nome: estado.nome,
-    telefone: from,
-    servico: estado.servico,
-    dataHora: `${estado.diaEscolhido}T${estado.horarioEscolhido}:00`,
-  });
+  if (!estado.clienteId) return mensagens.AGENDAMENTO_NAO_CONFIRMADO;
 
-  if (!validation.ok) return validation.message;
+  const dataHora = `${estado.diaEscolhido}T${estado.horarioEscolhido}:00`;
+  if (!isValidNome(estado.nome)) return mensagens.NOME_INVALIDO;
+  if (!isValidServico(estado.servico)) return mensagens.SERVICO_INVALIDO;
+  if (!isValidDataHora(dataHora)) return mensagens.DATAHORA_INVALIDA;
 
   const result = await agendarServico({
     clienteId: estado.clienteId,
@@ -484,7 +486,7 @@ async function handleWebhook(req, res) {
   const estado = setEstado(from, {
     clienteId: cliente.id,
     nome: cliente.nome,
-    telefone: from,
+    telefone: cliente.telefone,
   });
 
   let resposta;
