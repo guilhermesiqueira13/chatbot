@@ -26,6 +26,18 @@ async function ensureGoogleEventIdColumn() {
   }
 }
 
+// Algumas instalações antigas utilizavam a coluna 'horario_id'.
+// Esta função garante que a coluna 'horario' exista para evitar erros
+// de "Unknown column 'horario'" ao inserir agendamentos.
+async function ensureHorarioColumn() {
+  const [rows] = await pool.query(
+    "SHOW COLUMNS FROM agendamentos LIKE 'horario'"
+  );
+  if (rows.length === 0) {
+    await pool.query("ALTER TABLE agendamentos ADD COLUMN horario DATETIME");
+  }
+}
+
 async function buscarHorariosDisponiveis(data) {
   if (isNaN(new Date(data).getTime())) {
     throw new ValidationError("Data inválida");
@@ -94,6 +106,7 @@ async function agendarServico({
     }
 
     await ensureGoogleEventIdColumn();
+    await ensureHorarioColumn();
 
     const evento = await criarAgendamento({
       cliente: clienteNome,

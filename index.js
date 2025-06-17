@@ -329,7 +329,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             .join("\n");
 
           resposta =
-            `Ótimo! Agora, escolha o dia do agendamento. Pode responder 'Quarta', 'Sábado' ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+            `Ótimo! Agora, escolha o dia do agendamento. Agendamos somente de segunda a sábado. Você pode responder "Quarta", "Sábado" ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
           agendamentoPendente.confirmationStep = "awaiting_day";
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
@@ -440,7 +440,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             .map((d) => `- ${formatarDiaBr(d)}`)
             .join("\n");
           resposta =
-            `Agora, escolha o dia do agendamento. Pode responder 'Quarta', 'Sábado' ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+            `Agora, escolha o dia do agendamento. Agendamos somente de segunda a sábado. Você pode responder "Quarta", "Sábado" ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
         }
@@ -577,7 +577,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
               .map((d) => `- ${formatarDiaBr(d)}`)
               .join("\n");
             resposta =
-              `Agora, escolha o dia do agendamento. Pode responder 'Quarta', 'Sábado' ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+              `Agora, escolha o dia do agendamento. Agendamos somente de segunda a sábado. Você pode responder "Quarta", "Sábado" ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
             break;
           }
 

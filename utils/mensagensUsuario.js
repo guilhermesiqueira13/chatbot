@@ -1,6 +1,6 @@
 const MENSAGENS = {
   BEM_VINDO:
-    "Opa! Bem-vindo à Barbearia. Qual serviço deseja? Corte, Barba ou Sobrancelha.\n(Envie 'Cancelar' para sair)",
+    "Opa! Bem-vindo à Barbearia. Realizamos agendamentos de segunda a sábado. Qual serviço deseja? Corte, Barba ou Sobrancelha.\n(Envie 'Cancelar' para sair)",
   SERVICO_NAO_ENTENDIDO:
     "Não entendi qual serviço você deseja. Escolha entre Corte, Barba ou Sobrancelha.",
   servicoNaoReconhecido: (nome) =>
@@ -10,7 +10,7 @@ const MENSAGENS = {
   SEM_HORARIOS_DISPONIVEIS:
     "Não temos horários disponíveis no momento. Tente novamente mais tarde!",
   DOMINGO_NAO_PERMITIDO:
-    "Não realizamos agendamentos aos domingos. Escolha um dia entre segunda e sábado.",
+    "Não realizamos agendamentos aos domingos. Trabalhamos apenas de segunda a sábado.",
   HORARIO_INVALIDO:
     "Horário inválido. Escolha um dos horários disponíveis listados acima.",
   NAO_AGENDAMENTO_ANDAMENTO:
