@@ -74,9 +74,17 @@ function isValidDataHora(dataHora) {
   return false;
 }
 
+function isDentroHorarioAtendimento(dataHora) {
+  const date = new Date(dataHora);
+  if (isNaN(date.getTime())) return false;
+  const h = date.getHours();
+  return h >= 9 && h < 18;
+}
+
 module.exports = {
   isValidTelefone,
   isValidNome,
   isValidServico,
   isValidDataHora,
+  isDentroHorarioAtendimento,
 };
