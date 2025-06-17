@@ -182,6 +182,13 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             intent = "escolha_horario";
           }
           break;
+        case "awaiting_final_confirmation":
+          if (["sim", "confirmar"].some((k) => msgLower.includes(k))) {
+            intent = "confirmar_agendamento_final";
+          } else if (["nao", "não", "cancelar"].some((k) => msgLower.includes(k))) {
+            intent = "negar_agendamento_final";
+          }
+          break;
         case "confirmar_cancelamento": {
           const agendamentoPendente = agendamentosPendentes.get(from);
           logger.info(
@@ -609,20 +616,51 @@ app.post("/webhook", originValidator, async (req, res, next) => {
           break;
         }
 
-        case "confirmar_agendamento_com_nome": {
+       case "confirmar_agendamento_com_nome": {
+         const agendamentoPendente = agendamentosPendentes.get(from);
+         if (
+           !agendamentoPendente ||
+           (agendamentoPendente.confirmationStep !== "awaiting_name_choice" &&
+             agendamentoPendente.confirmationStep !==
+               "awaiting_new_name_confirmation") // Permite confirmar após digitar um novo nome
+         ) {
+           resposta = mensagens.NAO_AGENDAMENTO_ANDAMENTO;
+           agendamentosPendentes.delete(from);
+           break;
+         }
+          const dt = new Date(agendamentoPendente.dia_horario);
+          const diaSemana = dt
+            .toLocaleDateString("pt-BR", { weekday: "long" })
+            .replace("-feira", "");
+          const dia = dt.toLocaleDateString("pt-BR");
+          const hora = dt.toLocaleTimeString("pt-BR", {
+            timeZone: "America/Sao_Paulo",
+            hour12: false,
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          resposta =
+            `Você está prestes a agendar:\n- Serviço: ${agendamentoPendente.servicos.join(", ")}\n- Dia: ${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)} (${dia})\n- Horário: ${hora}\n- Nome: ${cliente.nome}\n\nConfirma? (Responda 'Sim' ou 'Não')`;
+
+          agendamentosPendentes.set(from, {
+            ...agendamentoPendente,
+            confirmationStep: "awaiting_final_confirmation",
+          });
+          break;
+        }
+
+        case "confirmar_agendamento_final": {
           const agendamentoPendente = agendamentosPendentes.get(from);
           if (
             !agendamentoPendente ||
-            (agendamentoPendente.confirmationStep !== "awaiting_name_choice" &&
-              agendamentoPendente.confirmationStep !==
-                "awaiting_new_name_confirmation") // Permite confirmar após digitar um novo nome
+            agendamentoPendente.confirmationStep !== "awaiting_final_confirmation"
           ) {
             resposta = mensagens.NAO_AGENDAMENTO_ANDAMENTO;
             agendamentosPendentes.delete(from);
             break;
           }
 
-          // A variável 'cliente' no escopo global do webhook já possui o nome correto.
           const result = await agendarServico({
             clienteId: agendamentoPendente.clienteId,
             clienteNome: cliente.nome,
@@ -639,9 +677,22 @@ app.post("/webhook", originValidator, async (req, res, next) => {
           const horarioFormatado = formatarData(
             agendamentoPendente.dia_horario
           );
-          resposta = `✅ Agendamento confirmado para *${agendamentoPendente.servicos.join()}* na *${horarioFormatado}*\nNo nome de: *${
-            cliente.nome
-          }*!`;
+          resposta = `✅ Agendamento confirmado para *${agendamentoPendente.servicos.join()}* na *${horarioFormatado}*\nNo nome de: *${cliente.nome}*!`;
+          agendamentosPendentes.delete(from);
+          break;
+        }
+
+        case "negar_agendamento_final": {
+          const agendamentoPendente = agendamentosPendentes.get(from);
+          if (
+            !agendamentoPendente ||
+            agendamentoPendente.confirmationStep !== "awaiting_final_confirmation"
+          ) {
+            resposta = mensagens.NAO_AGENDAMENTO_ANDAMENTO;
+            agendamentosPendentes.delete(from);
+            break;
+          }
+          resposta = mensagens.AGENDAMENTO_NAO_CONFIRMADO;
           agendamentosPendentes.delete(from);
           break;
         }
