@@ -108,9 +108,40 @@ node index.js
 
 Para que o bot reconheça a escolha de dias e horários de forma natural, inclua frases de treinamento como:
 
-- "Quero sexta à tarde"
-- "Tem sábado de manhã?"
-- "Horários para amanhã"
-- "Próxima semana"
-- "Quero ver quinta-feira"
-- "Quero agendar para a manhã"
+### Intenção: Escolher Dia
+- "Tenho horário disponível para amanhã?"
+- "Quais dias você tem vaga para a próxima semana?"
+- "Gostaria de marcar para segunda-feira."
+- "Tem horário quinta?"
+- "Me mostre os horários só de sábado."
+- "Posso agendar para dia 22?"
+- "Mostre as opções de dias novamente, por favor."
+- "Queria saber se tem vaga na sexta à tarde."
+
+### Intenção: Escolher Horário
+- "Tem horário às 14h?"
+- "Gostaria de agendar para de manhã."
+- "Quais os horários disponíveis nesse dia?"
+- "Consigo marcar por volta de 17:30?"
+- "Qual o primeiro horário da manhã?"
+- "Preciso de um horário no início da tarde."
+- "Poderia ver se existe um horário às 9 da manhã?"
+- "Quero ver os horários para noite."
+
+### Intenção: Confirmar Agendamento
+- "Esse horário está confirmado então?"
+- "Pode confirmar meu agendamento, por favor?"
+- "Está certo, pode marcar para mim."
+- "Sim, esse dia e horário estão ótimos."
+- "Quero confirmar o agendamento para quinta às 15h."
+- "Perfeito, reserve esse horário pra mim."
+- "Pode deixar confirmado."
+
+### Intenção: Cancelar ou Reagendar
+- "Preciso cancelar o meu horário."
+- "Como faço pra remarcar para outro dia?"
+- "Quero mudar o horário para mais cedo."
+- "Dá pra remarcar para quarta-feira?"
+- "Vou precisar cancelar o agendamento."
+- "Quero alterar meu horário para 17h."
+- "Consegue reagendar para o próximo sábado?"
