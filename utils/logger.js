@@ -47,4 +47,14 @@ function info(...msgs) {
   baseLog('INFO', msgs.join(' '));
 }
 
-module.exports = { user, bot, dialogflow, error, info };
+function db(action, details) {
+  let detailStr;
+  try {
+    detailStr = typeof details === 'string' ? details : JSON.stringify(details);
+  } catch (e) {
+    detailStr = String(details);
+  }
+  baseLog('DB', `${action} | ${detailStr}`);
+}
+
+module.exports = { user, bot, dialogflow, error, info, db };
