@@ -5,6 +5,8 @@ const {
   listarDiasDisponiveis,
   listarTodosHorariosDisponiveis,
   formatarDiaBr,
+  gerarMensagemDias,
+  gerarMensagemHorarios,
 } = require('../utils/dataHelpers');
 const { normalizarServico } = require('../utils/stringHelpers');
 const {
@@ -54,8 +56,7 @@ async function detectIntent(from, text) {
 
 // Lista os primeiros dias disponíveis no formato amigável
 function listarPrimeirosDias(diasMap, start = 0, count = 6) {
-  const dias = Object.keys(diasMap).slice(start, start + count);
-  return dias.map((d) => `- ${formatarDiaBr(d)}`).join('\n');
+  return gerarMensagemDias(diasMap, start, count);
 }
 
 /** Envia saudação inicial e reseta o estado do usuário */
@@ -85,48 +86,95 @@ async function handleEscolhaServico({ from, parametros }) {
     confirmationStep: 'awaiting_day',
   });
 
+  logger.info(from, `Servico escolhido: ${servico.nome}`);
+
   const listaDias = listarPrimeirosDias(diasDisponiveis);
   return `Perfeito! Escolha um dia (segunda a sábado).\n${listaDias}`;
 }
 
 /** Processa a escolha do dia e horário evitando domingos */
-async function handleEscolhaDataHora({ from, msg }) {
+async function handleEscolhaDataHora({ from, msg, parametros }) {
   const estado = agendamentosPendentes.get(from);
-  if (!estado || estado.confirmationStep !== 'awaiting_day')
-    return mensagens.ESCOLHA_SERVICO_PRIMEIRO;
+  if (!estado || !estado.servico) return mensagens.ESCOLHA_SERVICO_PRIMEIRO;
 
-  const diasDisp = estado.diasDisponiveis;
+  const diasDisp = estado.diasDisponiveis || {};
   const diasKeys = Object.keys(diasDisp);
-  const parsed = parseEscolhaDia(msg.toLowerCase());
+  logger.info(from, `Etapa ${estado.confirmationStep}`);
 
-  if (parsed.type === 'verMais') {
-    estado.diaIndex += 6;
-    const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+  if (estado.confirmationStep === 'awaiting_day') {
+    let escolhido = null;
+
+    let paramDate = parametros['date-time']?.stringValue || parametros.date?.stringValue;
+    if (paramDate) {
+      escolhido = String(paramDate).split('T')[0];
+    } else {
+      const parsed = parseEscolhaDia(msg.toLowerCase());
+      if (parsed.type === 'verMais') {
+        estado.diaIndex += 6;
+        const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+        agendamentosPendentes.set(from, estado);
+        return `Mais opções de dias:\n${listaDias}`;
+      }
+      if (parsed.type === 'weekday') {
+        if (parsed.value === 0) return mensagens.DOMINGO_NAO_PERMITIDO;
+        escolhido = diasKeys.find((d) => new Date(d).getDay() === parsed.value);
+      } else if (parsed.type === 'date') {
+        if (new Date(parsed.value).getDay() === 0)
+          return mensagens.DOMINGO_NAO_PERMITIDO;
+        if (diasKeys.includes(parsed.value)) escolhido = parsed.value;
+      }
+    }
+
+    if (!escolhido || !diasKeys.includes(escolhido)) {
+      const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+      return `Dia inválido. Escolha um destes:\n${listaDias}`;
+    }
+
+    if (new Date(escolhido).getDay() === 0) {
+      return mensagens.DOMINGO_NAO_PERMITIDO;
+    }
+
+    estado.diaEscolhido = escolhido;
+    estado.confirmationStep = 'awaiting_time';
     agendamentosPendentes.set(from, estado);
-    return `Mais opções:\n${listaDias}`;
+
+    const horarios = gerarMensagemHorarios(diasDisp[escolhido]);
+    return `Ótimo! Horários disponíveis para ${formatarDiaBr(escolhido)}:\n${horarios}`;
   }
 
-  let escolhido;
-  if (parsed.type === 'weekday') {
-    if (parsed.value === 0) return mensagens.DOMINGO_NAO_PERMITIDO;
-    escolhido = diasKeys.find((d) => new Date(d).getDay() === parsed.value);
-  } else if (parsed.type === 'date') {
-    const d = new Date(parsed.value);
-    if (d.getDay() === 0) return mensagens.DOMINGO_NAO_PERMITIDO;
-    if (diasKeys.includes(parsed.value)) escolhido = parsed.value;
+  if (estado.confirmationStep === 'awaiting_time') {
+    const horariosDia = diasDisp[estado.diaEscolhido] || [];
+    let hora = null;
+
+    if (parametros['date-time']?.stringValue) {
+      const dt = new Date(parametros['date-time'].stringValue);
+      const dataParam = dt.toISOString().slice(0, 10);
+      if (dataParam === estado.diaEscolhido) {
+        hora = dt.toTimeString().slice(0, 5);
+      }
+    } else if (parametros.time?.stringValue) {
+      hora = parametros.time.stringValue.slice(11, 16);
+    }
+
+    if (!hora) {
+      const num = parseInt(msg, 10);
+      if (!isNaN(num)) hora = horariosDia[num - 1];
+    }
+
+    if (!hora || !horariosDia.includes(hora)) {
+      const lista = gerarMensagemHorarios(horariosDia);
+      return `Horário inválido. Escolha um dos seguintes:\n${lista}`;
+    }
+
+    estado.horarioEscolhido = hora;
+    estado.confirmationStep = 'awaiting_confirm';
+    agendamentosPendentes.set(from, estado);
+
+    const resumo = formatarDataHorarioBr(`${estado.diaEscolhido}T${hora}:00`);
+    return `Confirmar agendamento de *${estado.servico}* em *${resumo}* para *${estado.nome}*?`;
   }
 
-  if (!escolhido) {
-    const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
-    return `Não encontrei esse dia disponível. Escolha uma das opções:\n${listaDias}`;
-  }
-
-  estado.diaEscolhido = escolhido;
-  estado.confirmationStep = 'awaiting_time';
-  agendamentosPendentes.set(from, estado);
-
-  const horarios = diasDisp[escolhido].map((h, i) => `${i + 1}. ${h}`).join('\n');
-  return `Ótimo! Horários disponíveis para ${formatarDiaBr(escolhido)}:\n${horarios}`;
+  return mensagens.NAO_AGENDAMENTO_ANDAMENTO;
 }
 
 /** Recebe o nome do cliente para atualização */
@@ -173,7 +221,7 @@ async function handleConfirmarAgendamento({ from }) {
   agendamentosPendentes.delete(from);
 
   if (!result.success) return mensagens.ERRO_AGENDAR;
-  return `✅ Agendamento confirmado para *${estado.servico}* em *${formatarDataHorarioBr(`${estado.diaEscolhido}T${estado.horarioEscolhido}:00`)}*`;
+  return `✅ Agendamento confirmado para *${estado.servico}* em *${formatarDataHorarioBr(`${estado.diaEscolhido}T${estado.horarioEscolhido}:00`)}* no nome de *${estado.nome}*`;
 }
 
 /** Lista agendamentos ativos para cancelamento */
@@ -346,7 +394,7 @@ async function handleWebhook(req, res) {
         resposta = await handleEscolhaServico({ from, parametros: parameters });
         break;
       case 'escolha_datahora':
-        resposta = await handleEscolhaDataHora({ from, msg });
+        resposta = await handleEscolhaDataHora({ from, msg, parametros: parameters });
         break;
       case 'informar_novo_nome':
         resposta = await handleInformarNovoNome({ from, msg });
