@@ -118,7 +118,12 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
       }
       if (parsed.type === 'weekday') {
         if (parsed.value === 0) return mensagens.DOMINGO_NAO_PERMITIDO;
-        escolhido = diasKeys.find((d) => new Date(d).getDay() === parsed.value);
+        const possiveis = diasKeys.filter(
+          (d) => new Date(d).getDay() === parsed.value,
+        );
+        if (possiveis.length) {
+          escolhido = parsed.next ? possiveis[1] || possiveis[0] : possiveis[0];
+        }
       } else if (parsed.type === 'date') {
         if (new Date(parsed.value).getDay() === 0)
           return mensagens.DOMINGO_NAO_PERMITIDO;
@@ -128,7 +133,22 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
 
     if (!escolhido || !diasKeys.includes(escolhido)) {
       const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
-      return `Dia inválido. Escolha um destes:\n${listaDias}`;
+      let sugestao = '';
+      try {
+        const proximos = await listarTodosHorariosDisponiveis(14);
+        const proximo = encontrarHorarioProximo(
+          `${escolhido || diasKeys[0]}T00:00:00`,
+          proximos,
+        );
+        if (proximo) {
+          sugestao = ` Próximo horário disponível: ${formatarDataHorarioBr(
+            proximo.dia_horario,
+          )}.`;
+        }
+      } catch (e) {
+        logger.error(from, e);
+      }
+      return `Dia inválido.${sugestao}\nEscolha um destes:\n${listaDias}`;
     }
 
     if (new Date(escolhido).getDay() === 0) {
@@ -160,6 +180,24 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
     if (!hora) {
       const num = parseInt(msg, 10);
       if (!isNaN(num)) hora = horariosDia[num - 1];
+      const lower = msg.toLowerCase();
+      if (!hora && /primeiro/.test(lower)) {
+        hora = horariosDia[0];
+      }
+      if (!hora && /manh[ãa]/.test(lower)) {
+        hora = horariosDia.find((h) => parseInt(h.split(':')[0]) < 12);
+      }
+      if (!hora && /tarde/.test(lower)) {
+        hora = horariosDia.find((h) => parseInt(h.split(':')[0]) >= 12);
+      }
+      if (!hora) {
+        const m = lower.match(/\b(\d{1,2})(?:h|:(\d{2}))?/);
+        if (m) {
+          const hh = m[1].padStart(2, '0');
+          const mm = m[2] || '00';
+          hora = `${hh}:${mm}`;
+        }
+      }
     }
 
     if (!hora || !horariosDia.includes(hora)) {
@@ -243,7 +281,9 @@ async function handleConfirmarAgendamento({ from }) {
 
 /** Lista agendamentos ativos para cancelamento */
 async function handleCancelamento({ from }) {
-  const agendamentos = await listarAgendamentosAtivos(from);
+  const agendamentos = (await listarAgendamentosAtivos(from)).filter(
+    (a) => new Date(a.horario).getDay() !== 0,
+  );
   if (!agendamentos.length) return mensagens.SEM_AGENDAMENTOS_CANCELAR;
   const lista = agendamentos
     .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
@@ -289,7 +329,9 @@ async function handleConfirmarCancelamento({ from, msg }) {
 // Placeholders for reagendamento handlers to keep structure clear
 /** Inicia o fluxo de reagendamento */
 async function handleReagendar({ from }) {
-  const agendamentos = await listarAgendamentosAtivos(from);
+  const agendamentos = (await listarAgendamentosAtivos(from)).filter(
+    (a) => new Date(a.horario).getDay() !== 0,
+  );
   if (!agendamentos.length) return mensagens.SEM_AGENDAMENTOS_REAGENDAR;
   const lista = agendamentos
     .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
@@ -385,6 +427,14 @@ async function handleWebhook(req, res) {
   if (!msg || !from) return res.status(400).send('Requisição inválida.');
 
   logger.user(from, msg);
+
+  const texto = (msg || '').trim().toLowerCase();
+  if (/^(cancelar|voltar|reiniciar)/.test(texto)) {
+    agendamentosPendentes.delete(from);
+    const respostaReinicio = await handleWelcome({ from });
+    logger.bot(from, respostaReinicio);
+    return res.json(createResponse(true, { reply: respostaReinicio }, null));
+  }
 
   let cliente;
   try {
