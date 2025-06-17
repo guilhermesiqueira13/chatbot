@@ -58,7 +58,8 @@ async function listarHorariosDisponiveis(data) {
   const filtrados = disponiveis.filter((h) => {
     const dt = new Date(`${ano}-${mes}-${dia}T${h}:00-03:00`);
     const day = dt.getDay();
-    return day > 1 && day <= 6;
+    // 0 = Sunday, so exclude only that day
+    return day !== 0;
   });
 
   return filtrados;
