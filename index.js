@@ -317,7 +317,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             .join("\n");
 
           resposta =
-            `Ótimo! Escolha um dia para agendar seu corte:\n${listaDias}\nSe quiser agendar para uma data mais distante, responda: "Ver mais dias"\nBasta responder com o nome do dia ou a data. Exemplo: "Quinta" ou "20/06".`;
+            `Ótimo! Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
           agendamentoPendente.confirmationStep = "awaiting_day";
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
@@ -393,7 +393,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             .map((d) => `- ${formatarDiaBr(d)}`)
             .join("\n");
           resposta =
-            `Escolha um dia para agendar seu corte:\n${listaDias}\nSe quiser agendar para uma data mais distante, responda: "Ver mais dias"`;
+            `Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
         }
@@ -530,7 +530,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
               .map((d) => `- ${formatarDiaBr(d)}`)
               .join("\n");
             resposta =
-              `Escolha um dia para agendar seu corte:\n${listaDias}\nSe quiser agendar para uma data mais distante, responda: "Ver mais dias"`;
+              `Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
             break;
           }
 

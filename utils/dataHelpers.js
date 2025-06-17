@@ -1,4 +1,5 @@
 const { listarHorariosDisponiveis } = require('../services/calendarService');
+const dayjs = require('dayjs');
 
 function formatarDataHorarioBr(date) {
   const data = new Date(date);
@@ -76,8 +77,8 @@ async function listarTodosHorariosDisponiveis(dias = 7) {
     const data = new Date(hoje);
     data.setDate(hoje.getDate() + offset);
     offset++;
-    // Ignora domingos (getDay() === 0)
-    if (data.getDay() === 0) {
+    // Ignora domingos
+    if (dayjs(data).day() === 0) {
       continue;
     }
     const dataStr = data.toISOString().slice(0, 10);
@@ -95,6 +96,9 @@ async function listarDiasDisponiveis(dias = 14) {
   const diasMap = {};
   for (const h of horarios) {
     const [data, horaParte] = h.dia_horario.split('T');
+    if (dayjs(data).day() === 0) {
+      continue;
+    }
     const hora = horaParte.slice(0, 5);
     if (!diasMap[data]) diasMap[data] = [];
     diasMap[data].push(hora);
