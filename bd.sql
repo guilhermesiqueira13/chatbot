@@ -65,4 +65,6 @@ INSERT INTO servicos (nome, descricao, duracao) VALUES
 -- Garante compatibilidade com bancos existentes
 ALTER TABLE agendamentos
     ADD COLUMN IF NOT EXISTS google_event_id VARCHAR(255) NOT NULL;
+ALTER TABLE agendamentos
+    ADD COLUMN IF NOT EXISTS horario DATETIME;
 

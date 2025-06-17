@@ -298,7 +298,7 @@ router.post("/webhook", async (req, res) => {
           resposta =
             `Ótimo! Você escolheu *${agendamentoPendente.servicos.join(
               " e "
-            )}*.\nEscolha um dia:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+            )}*.\nEscolha um dia (agendamos de segunda a sábado). Você pode responder "Quarta" ou "20/06".\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
           agendamentoPendente.confirmationStep = "awaiting_day";
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
@@ -375,7 +375,7 @@ router.post("/webhook", async (req, res) => {
             .map((d) => `- ${formatarDiaBr(d)}`)
             .join("\n");
           resposta =
-            `Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+            `Escolha um dia para agendar seu corte (segunda a sábado). Você pode responder "Quarta" ou "20/06".\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
         }
@@ -402,7 +402,7 @@ router.post("/webhook", async (req, res) => {
               .map((d) => `- ${formatarDiaBr(d)}`)
               .join("\n");
             resposta =
-              `Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+              `Escolha um dia para agendar seu corte (segunda a sábado). Você pode responder "Quarta" ou "20/06".\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
             break;
           }
 
