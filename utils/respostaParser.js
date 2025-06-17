@@ -1,0 +1,36 @@
+const DEFAULT_ERROR_MSG = "Desculpe, não entendi. Por favor, responda com o nome do dia, a data (ex: 20/06) ou digite 'Ver mais dias' para mais opções.";
+
+function removeAccents(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function parseEscolhaDia(input) {
+  if (!input || typeof input !== 'string') {
+    return { type: 'invalid', error: DEFAULT_ERROR_MSG };
+  }
+  const text = input.trim().toLowerCase();
+  if (text === 'ver mais dias') {
+    return { type: 'verMais' };
+  }
+
+  const dataMatch = text.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);
+  if (dataMatch) {
+    let [, d, m, a] = dataMatch;
+    const year = a || String(new Date().getFullYear());
+    d = d.padStart(2, '0');
+    m = m.padStart(2, '0');
+    return { type: 'date', value: `${year}-${m}-${d}` };
+  }
+
+  const dias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const normalized = removeAccents(text);
+  for (let i = 0; i < dias.length; i++) {
+    if (removeAccents(dias[i]).startsWith(normalized)) {
+      return { type: 'weekday', value: i };
+    }
+  }
+
+  return { type: 'invalid', error: DEFAULT_ERROR_MSG };
+}
+
+module.exports = { parseEscolhaDia, DEFAULT_ERROR_MSG, removeAccents };

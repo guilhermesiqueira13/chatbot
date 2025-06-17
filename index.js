@@ -29,6 +29,11 @@ const mensagens = require("./utils/mensagensUsuario");
 const originValidator = require("./middlewares/originValidator");
 const rateLimiter = require("./middlewares/rateLimiter");
 const { createResponse } = require("./utils/apiResponse");
+const {
+  parseEscolhaDia,
+  DEFAULT_ERROR_MSG,
+  removeAccents,
+} = require("./utils/respostaParser");
 
 const app = express();
 app.set('trust proxy', 1);
@@ -374,6 +379,41 @@ app.post("/webhook", originValidator, async (req, res, next) => {
                   .toLowerCase();
                 return nome.startsWith(diaParam);
               });
+            }
+            if (!escolhido) {
+              const parsed = parseEscolhaDia(msg);
+              if (parsed.type === "verMais") {
+                agendamentoPendente.diaIndex += 6;
+              } else if (parsed.type === "date") {
+                if (diasKeys.includes(parsed.value)) {
+                  escolhido = parsed.value;
+                }
+              } else if (parsed.type === "weekday") {
+                const dias = [
+                  "domingo",
+                  "segunda",
+                  "terça",
+                  "quarta",
+                  "quinta",
+                  "sexta",
+                  "sábado",
+                ];
+                const dayName = dias[parsed.value];
+                escolhido = diasKeys.find((k) => {
+                  const nome = new Date(k)
+                    .toLocaleDateString("pt-BR", { weekday: "long" })
+                    .replace("-feira", "")
+                    .toLowerCase();
+                  return (
+                    removeAccents(nome).startsWith(removeAccents(dayName)) ||
+                    nome.startsWith(dayName)
+                  );
+                });
+              } else if (parsed.type === "invalid") {
+                resposta = DEFAULT_ERROR_MSG;
+                agendamentosPendentes.set(from, agendamentoPendente);
+                break;
+              }
             }
             if (escolhido) {
               agendamentoPendente.diaEscolhido = escolhido;
