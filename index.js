@@ -322,7 +322,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             .join("\n");
 
           resposta =
-            `Ótimo! Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+            `Ótimo! Agora, escolha o dia do agendamento. Pode responder 'Quarta', 'Sábado' ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
           agendamentoPendente.confirmationStep = "awaiting_day";
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
@@ -420,9 +420,9 @@ app.post("/webhook", originValidator, async (req, res, next) => {
               const horariosDia = agendamentoPendente.diasDisponiveis[escolhido];
               agendamentoPendente.confirmationStep = "awaiting_time";
               agendamentosPendentes.set(from, agendamentoPendente);
-              resposta = `Ótimo, você escolheu ${formatarDiaBr(escolhido)}. Estes são os horários disponíveis:\n${horariosDia
+              resposta = `Dia escolhido: ${formatarDiaBr(escolhido)}.\nEscolha o horário (ou responda 'Voltar' para outro dia):\n${horariosDia
                 .map((h, i) => `- ${h}`)
-                .join("\n")}\nDigite o horário desejado ou "Voltar" para escolher outro dia.`;
+                .join("\n")}`;
               break;
             }
           }
@@ -433,7 +433,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
             .map((d) => `- ${formatarDiaBr(d)}`)
             .join("\n");
           resposta =
-            `Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+            `Agora, escolha o dia do agendamento. Pode responder 'Quarta', 'Sábado' ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
           agendamentosPendentes.set(from, agendamentoPendente);
           break;
         }
@@ -512,9 +512,9 @@ app.post("/webhook", originValidator, async (req, res, next) => {
                   horarios
                 );
                 if (horarioMaisProximo) {
-                  resposta = `O horário *${diaDaSemanaFormatado} às ${horaFormatada}* não está disponível. O mais próximo é *${formatarData(
+                  resposta = `Esse horário não está disponível. O mais próximo é *${formatarData(
                     horarioMaisProximo.dia_horario
-                  )}*. Deseja escolher este? Responda 'Sim' ou escolha outro horário.`;
+                  )}*. Quer esse? Responda 'Sim' ou escolha outro.`;
                   agendamentosPendentes.set(from, {
                     ...agendamentoPendente,
                     confirmationStep: "confirmar_horario_proximo",
@@ -522,14 +522,14 @@ app.post("/webhook", originValidator, async (req, res, next) => {
                   });
                   break;
                 } else {
-                  resposta = `Nenhum horário disponível próximo a *${diaDaSemanaFormatado} às ${horaFormatada}*. Escolha outro:\n\n${horarios
+                  resposta = `Nenhum horário próximo disponível. Escolha outro:\n\n${horarios
                     .map((h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`)
                     .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
                   break;
                 }
               }
             } else {
-              resposta = `Formato inválido. Por favor, escolha um número da lista ou informe um dia e horário (exemplo: Sexta 10:00).\n\nHorários disponíveis:\n\n${horarios
+              resposta = `Formato inválido. Escolha um número da lista ou informe dia e horário (ex: Sexta 10:00).\n\nHorários disponíveis:\n\n${horarios
                 .map(
                   (h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`
                 )
@@ -570,7 +570,7 @@ app.post("/webhook", originValidator, async (req, res, next) => {
               .map((d) => `- ${formatarDiaBr(d)}`)
               .join("\n");
             resposta =
-              `Escolha um dia para agendar seu corte:\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
+              `Agora, escolha o dia do agendamento. Pode responder 'Quarta', 'Sábado' ou digitar uma data (ex: 21/06).\n${listaDias}\n\nSe quiser agendar para mais longe, responda: 'Ver mais dias'.`;
             break;
           }
 
@@ -938,11 +938,11 @@ app.post("/webhook", originValidator, async (req, res, next) => {
                 }
               }
             } else {
-              resposta = `Formato inválido. Escolha um horário da lista:\n\n${horarios
+              resposta = `Formato inválido. Use um horário da lista ou digite no formato 'Sexta 10:00'.\n\n${horarios
                 .map(
                   (h, index) => `${index + 1}. *${formatarData(h.dia_horario)}*`
                 )
-                .join("\n")}\n\nOu use o formato 'Sexta 10:00'.`;
+                .join("\n")}`;
               break;
             }
           }
