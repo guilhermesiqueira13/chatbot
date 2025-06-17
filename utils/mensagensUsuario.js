@@ -39,6 +39,8 @@ const MENSAGENS = {
     "Nenhum cancelamento em andamento. Quer cancelar um agendamento?",
   CANCELAMENTO_NAO_CONFIRMADO:
     "Cancelamento não confirmado. Deseja fazer algo mais?",
+  AGENDAMENTO_NAO_CONFIRMADO:
+    "Agendamento não confirmado. Deseja tentar novamente?",
   ERRO_PROCESSAR_CANCELAMENTO:
     "Ops, algo deu errado ao processar o cancelamento. Tente novamente mais tarde.",
   ERRO_CANCELAR_AGENDAMENTO:
