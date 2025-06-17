@@ -23,6 +23,7 @@ const mensagens = require('../utils/mensagensUsuario');
 const logger = require('../utils/logger');
 const { createResponse } = require('../utils/apiResponse');
 const { parseEscolhaDia } = require('../utils/respostaParser');
+const { validateRequiredParams } = require('../utils/validation');
 
 const sessionClient = new dialogflow.SessionsClient({
   keyFilename: process.env.DIALOGFLOW_KEYFILE,
@@ -51,16 +52,19 @@ async function detectIntent(from, text) {
   };
 }
 
+// Lista os primeiros dias disponíveis no formato amigável
 function listarPrimeirosDias(diasMap, start = 0, count = 6) {
   const dias = Object.keys(diasMap).slice(start, start + count);
   return dias.map((d) => `- ${formatarDiaBr(d)}`).join('\n');
 }
 
+/** Envia saudação inicial e reseta o estado do usuário */
 async function handleWelcome({ from }) {
   agendamentosPendentes.delete(from);
   return mensagens.BEM_VINDO;
 }
 
+/** Registra o serviço escolhido e mostra os dias disponíveis */
 async function handleEscolhaServico({ from, parametros }) {
   const servicoNome = parametros?.servico?.stringValue;
   if (!servicoNome) return mensagens.SERVICO_NAO_ENTENDIDO;
@@ -85,6 +89,7 @@ async function handleEscolhaServico({ from, parametros }) {
   return `Perfeito! Escolha um dia (segunda a sábado).\n${listaDias}`;
 }
 
+/** Processa a escolha do dia e horário evitando domingos */
 async function handleEscolhaDataHora({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_day')
@@ -124,6 +129,7 @@ async function handleEscolhaDataHora({ from, msg }) {
   return `Ótimo! Horários disponíveis para ${formatarDiaBr(escolhido)}:\n${horarios}`;
 }
 
+/** Recebe o nome do cliente para atualização */
 async function handleInformarNovoNome({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_name') {
@@ -142,10 +148,20 @@ async function handleInformarNovoNome({ from, msg }) {
   return mensagens.ERRO_ATUALIZAR_NOME;
 }
 
+/** Confirma o agendamento após validar dados obrigatórios */
 async function handleConfirmarAgendamento({ from }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_confirm')
     return mensagens.AGENDAMENTO_NAO_CONFIRMADO;
+
+  const validation = validateRequiredParams({
+    nome: estado.nome,
+    telefone: from,
+    servico: estado.servico,
+    dataHora: `${estado.diaEscolhido}T${estado.horarioEscolhido}:00`,
+  });
+
+  if (!validation.ok) return validation.message;
 
   const result = await agendarServico({
     clienteId: estado.clienteId,
@@ -160,6 +176,7 @@ async function handleConfirmarAgendamento({ from }) {
   return `✅ Agendamento confirmado para *${estado.servico}* em *${formatarDataHorarioBr(`${estado.diaEscolhido}T${estado.horarioEscolhido}:00`)}*`;
 }
 
+/** Lista agendamentos ativos para cancelamento */
 async function handleCancelamento({ from }) {
   const agendamentos = await listarAgendamentosAtivos(from);
   if (!agendamentos.length) return mensagens.SEM_AGENDAMENTOS_CANCELAR;
@@ -173,6 +190,7 @@ async function handleCancelamento({ from }) {
   return `Qual agendamento deseja cancelar?\n${lista}`;
 }
 
+/** Seleciona qual agendamento será cancelado */
 async function handleSelecionarCancelamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_cancelar')
@@ -188,6 +206,7 @@ async function handleSelecionarCancelamento({ from, msg }) {
   return `Confirma o cancelamento de ${ag.servico} em ${formatarDataHorarioBr(ag.horario)}?`;
 }
 
+/** Confirma ou aborta o cancelamento escolhido */
 async function handleConfirmarCancelamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_cancel_confirm')
@@ -203,6 +222,7 @@ async function handleConfirmarCancelamento({ from, msg }) {
 }
 
 // Placeholders for reagendamento handlers to keep structure clear
+/** Inicia o fluxo de reagendamento */
 async function handleReagendar({ from }) {
   const agendamentos = await listarAgendamentosAtivos(from);
   if (!agendamentos.length) return mensagens.SEM_AGENDAMENTOS_REAGENDAR;
@@ -216,6 +236,7 @@ async function handleReagendar({ from }) {
   return `Qual deseja reagendar?\n${lista}`;
 }
 
+/** Confirma o agendamento a ser reagendado */
 async function handleConfirmarInicioReagendamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento')
@@ -235,6 +256,7 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   return `Escolha um novo horário:\n${lista}`;
 }
 
+/** Recebe a nova data e hora para o reagendamento */
 async function handleEscolhaDataHoraReagendamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_data')
@@ -249,6 +271,7 @@ async function handleEscolhaDataHoraReagendamento({ from, msg }) {
   return `Confirma reagendar para ${formatarDataHorarioBr(h.dia_horario)}?`;
 }
 
+/** Finaliza o reagendamento se confirmado */
 async function handleConfirmarReagendamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_confirm')
@@ -267,10 +290,12 @@ async function handleConfirmarReagendamento({ from, msg }) {
   return `✅ Agendamento reagendado com sucesso!`;
 }
 
+/** Fallback para intents não mapeadas */
 async function handleDefault({ fulfillment }) {
   return fulfillment || mensagens.NAO_ENTENDI;
 }
 
+// Mapeamento das intents para facilitar futuras expansões
 const intentHandlers = {
   welcome_intent: handleWelcome,
   escolha_servico: handleEscolhaServico,
@@ -284,9 +309,9 @@ const intentHandlers = {
   confirmar_inicio_reagendamento: handleConfirmarInicioReagendamento,
   escolha_datahora_reagendamento: handleEscolhaDataHoraReagendamento,
   confirmar_reagendamento: handleConfirmarReagendamento,
-  default: handleDefault,
 };
 
+/** Controller principal do webhook do Dialogflow */
 async function handleWebhook(req, res) {
   const msg = req.body.Body || req.body.text;
   const from = req.body.From || req.body.sessionId;
@@ -308,9 +333,48 @@ async function handleWebhook(req, res) {
   estado.nome = cliente.nome;
   agendamentosPendentes.set(from, estado);
 
-  const handler = intentHandlers[intent] || intentHandlers.default;
+  let resposta;
   try {
-    const resposta = await handler({ from, msg, parametros: parameters, fulfillment });
+    switch (intent) {
+      case 'welcome_intent':
+        resposta = await handleWelcome({ from, parametros: parameters });
+        break;
+      case 'escolha_servico':
+        resposta = await handleEscolhaServico({ from, parametros: parameters });
+        break;
+      case 'escolha_datahora':
+        resposta = await handleEscolhaDataHora({ from, msg });
+        break;
+      case 'informar_novo_nome':
+        resposta = await handleInformarNovoNome({ from, msg });
+        break;
+      case 'confirmar_agendamento':
+        resposta = await handleConfirmarAgendamento({ from });
+        break;
+      case 'cancelar_agendamento':
+        resposta = await handleCancelamento({ from });
+        break;
+      case 'selecionar_cancelamento':
+        resposta = await handleSelecionarCancelamento({ from, msg });
+        break;
+      case 'confirmar_cancelamento':
+        resposta = await handleConfirmarCancelamento({ from, msg });
+        break;
+      case 'reagendar_agendamento':
+        resposta = await handleReagendar({ from });
+        break;
+      case 'confirmar_inicio_reagendamento':
+        resposta = await handleConfirmarInicioReagendamento({ from, msg });
+        break;
+      case 'escolha_datahora_reagendamento':
+        resposta = await handleEscolhaDataHoraReagendamento({ from, msg });
+        break;
+      case 'confirmar_reagendamento':
+        resposta = await handleConfirmarReagendamento({ from, msg });
+        break;
+      default:
+        resposta = await handleDefault({ fulfillment });
+    }
     res.json(createResponse(true, { reply: resposta }, null));
   } catch (error) {
     logger.error('Erro no handler:', error);
