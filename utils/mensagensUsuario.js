@@ -10,7 +10,7 @@ const MENSAGENS = {
   SEM_HORARIOS_DISPONIVEIS:
     "Não temos horários disponíveis no momento. Tente novamente mais tarde!",
   DOMINGO_NAO_PERMITIDO:
-    "Desculpe, não agendamos aos domingos. Escolha um dia de segunda a sábado.",
+    "Não realizamos agendamentos aos domingos. Escolha um dia entre segunda e sábado.",
   HORARIO_INVALIDO:
     "Horário inválido. Escolha um dos horários disponíveis listados acima.",
   NAO_AGENDAMENTO_ANDAMENTO:
