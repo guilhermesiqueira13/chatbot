@@ -78,8 +78,9 @@ function isValidDataHora(dataHora) {
 function isDentroHorarioAtendimento(dataHora) {
   const date = new Date(dataHora);
   if (isNaN(date.getTime())) return false;
+  const dia = date.getDay();
   const h = date.getHours();
-  return h >= 9 && h < 18;
+  return dia !== 0 && h >= 9 && h < 18;
 }
 
 // Valida todos os dados necessários para um agendamento

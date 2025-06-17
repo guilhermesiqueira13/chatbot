@@ -132,7 +132,10 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
         return `Mais opções de dias:\n${listaDias}`;
       }
       if (parsed.type === 'weekday') {
-        if (parsed.value === 0) return mensagens.DOMINGO_NAO_PERMITIDO;
+        if (parsed.value === 0) {
+          const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+          return `${mensagens.DOMINGO_NAO_PERMITIDO}\nEscolha um dia disponível:\n${listaDias}`;
+        }
         const possiveis = diasKeys.filter(
           (d) => new Date(d).getDay() === parsed.value,
         );
@@ -140,8 +143,10 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
           escolhido = parsed.next ? possiveis[1] || possiveis[0] : possiveis[0];
         }
       } else if (parsed.type === 'date') {
-        if (new Date(parsed.value).getDay() === 0)
-          return mensagens.DOMINGO_NAO_PERMITIDO;
+        if (new Date(parsed.value).getDay() === 0) {
+          const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+          return `${mensagens.DOMINGO_NAO_PERMITIDO}\nEscolha um dia disponível:\n${listaDias}`;
+        }
         if (diasKeys.includes(parsed.value)) escolhido = parsed.value;
       }
     }
@@ -167,7 +172,8 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
     }
 
     if (new Date(escolhido).getDay() === 0) {
-      return mensagens.DOMINGO_NAO_PERMITIDO;
+      const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+      return `${mensagens.DOMINGO_NAO_PERMITIDO}\nEscolha um dia disponível:\n${listaDias}`;
     }
 
     estado.diaEscolhido = escolhido;
