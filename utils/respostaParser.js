@@ -9,11 +9,42 @@ function parseEscolhaDia(input) {
     return { type: 'invalid', error: DEFAULT_ERROR_MSG };
   }
   const text = input.trim().toLowerCase();
+  const normText = removeAccents(text);
   if (text === 'ver mais dias') {
     return { type: 'verMais' };
   }
 
-  const dataMatch = text.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);
+  if (text === 'hoje') {
+    const hoje = new Date();
+    return { type: 'date', value: hoje.toISOString().slice(0, 10) };
+  }
+
+  if (/^amanh[ãa]$/.test(normText)) {
+    const amanha = new Date();
+    amanha.setDate(amanha.getDate() + 1);
+    return { type: 'date', value: amanha.toISOString().slice(0, 10) };
+  }
+
+  const proxMatch = normText.match(/^proxim[oa]?\s+(\w+)/);
+  if (proxMatch) {
+    const palavra = proxMatch[1];
+    const dias = [
+      'domingo',
+      'segunda',
+      'terça',
+      'quarta',
+      'quinta',
+      'sexta',
+      'sábado',
+    ];
+    for (let i = 0; i < dias.length; i++) {
+      if (removeAccents(dias[i]).startsWith(removeAccents(palavra))) {
+        return { type: 'weekday', value: i, next: true };
+      }
+    }
+  }
+
+  const dataMatch = normText.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);
   if (dataMatch) {
     let [, d, m, a] = dataMatch;
     const year = a || String(new Date().getFullYear());
@@ -23,7 +54,7 @@ function parseEscolhaDia(input) {
   }
 
   const dias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-  const normalized = removeAccents(text);
+  const normalized = normText;
   for (let i = 0; i < dias.length; i++) {
     if (removeAccents(dias[i]).startsWith(normalized)) {
       return { type: 'weekday', value: i };
