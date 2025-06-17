@@ -1,6 +1,4 @@
 require("dotenv").config();
-const express = require("express");
-const bodyParser = require("body-parser");
 const dialogflow = require("@google-cloud/dialogflow");
 const { agendarServico } = require("./agendamentoController");
 const {
@@ -23,8 +21,7 @@ const {
 } = require("./gerenciamentoController");
 const logger = require("../utils/logger");
 const mensagens = require("../utils/mensagensUsuario");
-
-const router = express.Router();
+const { createResponse } = require("../utils/apiResponse");
 
 // Configuração do Dialogflow
 const sessionClient = new dialogflow.SessionsClient({
@@ -34,9 +31,6 @@ const projectId = process.env.DIALOGFLOW_PROJECT_ID; // ID do seu projeto Dialog
 
 // Armazena estados temporários dos agendamentos por usuário
 const agendamentosPendentes = new Map();
-
-router.use(bodyParser.urlencoded({ extended: false }));
-router.use(bodyParser.json());
 
 // Utilitário para formatar datas e horários no padrão brasileiro
 
@@ -50,8 +44,8 @@ const SERVICOS_VALIDOS = {
   corteebarba: { id: 3, nome: "Corte + barba" },
 };
 
-// --- Rota Principal do Webhook ---
-router.post("/webhook", async (req, res) => {
+// --- Handler principal do Webhook ---
+async function handleWebhook(req, res, next) {
   const msg = req.body.Body || req.body.text;
   const from = req.body.From || req.body.sessionId;
   const profileName = req.body.ProfileName || "Cliente";
@@ -128,7 +122,7 @@ router.post("/webhook", async (req, res) => {
               "awaiting_reagendamento_datahora";
             agendamentosPendentes.set(from, estadoAgendamentoPendente);
             processamentoConcluido = true;
-            res.json({ reply: resposta });
+            res.json(createResponse(true, { reply: resposta }, null));
             return;
           }
           break;
@@ -1093,13 +1087,14 @@ router.post("/webhook", async (req, res) => {
       }
     }
     logger.info("Resposta FINAL a ser enviada ao usuário:", resposta);
-    res.json({ reply: resposta });
+    res.json(createResponse(true, { reply: resposta }, null));
   } catch (error) {
     // Captura erros globais do webhook
     console.error("Erro:", error, error && error.stack, JSON.stringify(error));
     logger.error("ERRO GERAL no Dialogflow ou webhook:", error);
-    res.json({ reply: "Ops, algo deu errado. Tente novamente?" });
+    if (next) return next(error);
+    res.json(createResponse(false, null, "Ops, algo deu errado. Tente novamente?"));
   }
-});
+}
 
-module.exports = router;
+module.exports = { handleWebhook };
