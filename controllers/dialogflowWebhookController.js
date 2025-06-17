@@ -22,6 +22,7 @@ const {
   reagendarAgendamento,
 } = require("./gerenciamentoController");
 const logger = require("../utils/logger");
+const mensagens = require("../utils/mensagensUsuario");
 
 const router = express.Router();
 
@@ -331,7 +332,7 @@ router.post("/webhook", async (req, res) => {
               const p = new Date(dataParam);
               if (!isNaN(p.getTime())) {
                 if (p.getDay() === 0) {
-                  resposta = "Não agendamos aos domingos. Escolha outro dia.";
+                  resposta = mensagens.DOMINGO_NAO_PERMITIDO;
                   agendamentosPendentes.set(from, agendamentoPendente);
                   break;
                 }
@@ -344,7 +345,7 @@ router.post("/webhook", async (req, res) => {
             if (!escolhido && parametros?.dia_semana?.stringValue) {
               const diaParam = parametros.dia_semana.stringValue.toLowerCase();
               if ("domingo".startsWith(diaParam)) {
-                resposta = "Não agendamos aos domingos. Escolha outro dia.";
+                resposta = mensagens.DOMINGO_NAO_PERMITIDO;
                 agendamentosPendentes.set(from, agendamentoPendente);
                 break;
               }
@@ -759,6 +760,12 @@ router.post("/webhook", async (req, res) => {
             }
 
             if (dataSolicitada && !isNaN(dataSolicitada.getTime())) {
+              if (dataSolicitada.getDay() === 0) {
+                resposta = mensagens.DOMINGO_NAO_PERMITIDO;
+                agendamentosPendentes.set(from, agendamentoPendente);
+                break;
+              }
+
               const diaDaSemanaFormatado = dataSolicitada
                 .toLocaleDateString("pt-BR", { weekday: "long" })
                 .toLowerCase();
