@@ -497,45 +497,11 @@ async function handleWebhook(req, res) {
 
   let resposta;
   try {
-    switch (intent) {
-      case 'welcome_intent':
-        resposta = await handleWelcome({ from, parametros: parameters });
-        break;
-      case 'escolha_servico':
-        resposta = await handleEscolhaServico({ from, parametros: parameters });
-        break;
-      case 'escolha_datahora':
-        resposta = await handleEscolhaDataHora({ from, msg, parametros: parameters });
-        break;
-      case 'informar_novo_nome':
-        resposta = await handleInformarNovoNome({ from, msg });
-        break;
-      case 'confirmar_agendamento':
-        resposta = await handleConfirmarAgendamento({ from });
-        break;
-      case 'cancelar_agendamento':
-        resposta = await handleCancelamento({ from });
-        break;
-      case 'selecionar_cancelamento':
-        resposta = await handleSelecionarCancelamento({ from, msg });
-        break;
-      case 'confirmar_cancelamento':
-        resposta = await handleConfirmarCancelamento({ from, msg });
-        break;
-      case 'reagendar_agendamento':
-        resposta = await handleReagendar({ from });
-        break;
-      case 'confirmar_inicio_reagendamento':
-        resposta = await handleConfirmarInicioReagendamento({ from, msg });
-        break;
-      case 'escolha_datahora_reagendamento':
-        resposta = await handleEscolhaDataHoraReagendamento({ from, msg });
-        break;
-      case 'confirmar_reagendamento':
-        resposta = await handleConfirmarReagendamento({ from, msg });
-        break;
-      default:
-        resposta = await handleDefault({ from, fulfillment });
+    const handler = intentHandlers[intent];
+    if (handler) {
+      resposta = await handler({ from, msg, parametros: parameters });
+    } else {
+      resposta = await handleDefault({ from, fulfillment });
     }
     logger.bot(from, resposta);
     res.json(createResponse(true, { reply: resposta }, null));
