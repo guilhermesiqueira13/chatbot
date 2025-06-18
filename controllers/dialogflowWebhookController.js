@@ -113,6 +113,10 @@ async function handleEscolhaServico({ from, parametros }) {
 async function handleEscolhaDataHora({ from, msg, parametros }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || !estado.servico) return mensagens.ESCOLHA_SERVICO_PRIMEIRO;
+  logger.info(from, `handleEscolhaDataHora - step ${estado.confirmationStep} servico=${estado.servico}`);
+  if (estado.confirmationStep === 'awaiting_reagendamento_data') {
+    return handleEscolhaDataHoraReagendamento({ from, msg, parametros });
+  }
 
   const diasDisp = estado.diasDisponiveis || {};
   const diasKeys = Object.keys(diasDisp);
@@ -372,6 +376,7 @@ async function handleReagendar({ from }) {
     agendamentos,
     clienteId: cliente.id,
   });
+  logger.info(from, `Listando ${agendamentos.length} agendamentos para reagendamento`);
   return `Qual deseja reagendar?\n${lista}`;
 }
 
@@ -398,6 +403,7 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   estado.horarioAtual = ag.horario;
   estado.confirmationStep = 'awaiting_reagendamento_data';
   setEstado(from, estado);
+  logger.info(from, `Reagendamento selecionado id=${ag.id} servico=${ag.servico}`);
   const horarios = await listarTodosHorariosDisponiveis();
   const lista = horarios
     .map((h, i) => `${i + 1}. ${formatarDataHorarioBr(h.dia_horario)}`)
@@ -407,12 +413,16 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
 }
 
 /** Recebe a nova data e hora para o reagendamento */
-async function handleEscolhaDataHoraReagendamento({ from, msg }) {
+async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_data')
     return mensagens.NENHUM_REAGENDAMENTO;
   const horarios = await listarTodosHorariosDisponiveis();
-  const escolha = parseInt(msg, 10);
+  logger.info(from, `handleEscolhaDataHoraReagendamento - servico=${estado.servico}`);
+  let escolha = parseInt(msg, 10);
+  if (isNaN(escolha) && parametros && parametros['number']) {
+    escolha = parseInt(parametros['number'].stringValue, 10);
+  }
   const idx = escolha - 1;
   const h =
     !isNaN(escolha) && escolha > 0 && escolha <= horarios.length
@@ -427,6 +437,7 @@ async function handleEscolhaDataHoraReagendamento({ from, msg }) {
   estado.novoHorario = h.dia_horario;
   estado.confirmationStep = 'awaiting_reagendamento_confirm';
   setEstado(from, estado);
+  logger.info(from, `Novo horario escolhido: ${estado.novoHorario} para servico ${estado.servico}`);
   return `Confirma reagendar ${estado.servico} para ${formatarDataHorarioBr(h.dia_horario)}?`;
 }
 
@@ -435,6 +446,7 @@ async function handleConfirmarReagendamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_confirm')
     return mensagens.NENHUM_REAGENDAMENTO;
+  logger.info(from, `Confirmando reagendamento do servico ${estado.servico} para ${estado.novoHorario}`);
   if (!/^sim/i.test(msg)) {
     agendamentosPendentes.delete(from);
     return mensagens.REAGENDAMENTO_CANCELADO;
