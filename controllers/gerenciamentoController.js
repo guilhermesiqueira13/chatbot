@@ -104,16 +104,23 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId, c
     await pool.query("START TRANSACTION");
 
     let eventId = googleEventId;
-    if (!eventId) {
+    let clienteNome;
+    let servicos = [];
+    {
       let query =
-        `SELECT a.google_event_id FROM agendamentos a
+        `SELECT a.google_event_id, c.nome AS cliente_nome,
+                GROUP_CONCAT(s.nome ORDER BY s.nome SEPARATOR ', ') AS servicos
+         FROM agendamentos a
+         JOIN clientes c ON a.cliente_id = c.id
          JOIN agendamentos_servicos asv ON a.id = asv.agendamento_id
+         JOIN servicos s ON asv.servico_id = s.id
          WHERE a.id = ? AND a.status = "ativo"`;
       const params = [agendamentoId];
       if (clienteId) {
         query += ' AND a.cliente_id = ?';
         params.push(clienteId);
       }
+      query += ' GROUP BY a.id';
       const [agendamento] = await pool.query(query, params);
       if (!agendamento.length) {
         await pool.query("ROLLBACK");
@@ -122,7 +129,9 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId, c
           message: "Agendamento não encontrado ou sem serviço vinculado.",
         };
       }
-      eventId = agendamento[0].google_event_id;
+      eventId = eventId || agendamento[0].google_event_id;
+      clienteNome = agendamento[0].cliente_nome;
+      servicos = (agendamento[0].servicos || '').split(/,\s*/).filter(Boolean);
     }
 
     try {
@@ -131,7 +140,11 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId, c
     logger.error(null, { message: 'Erro ao cancelar evento antigo no Google Calendar: ' + (e.message || e), stack: e.stack });
   }
 
-    const evento = await criarAgendamento({ cliente: "", servico: "", horario: novoHorario });
+    const evento = await criarAgendamento({
+      cliente: clienteNome || "",
+      servicos,
+      horario: novoHorario,
+    });
 
     if (clienteId) {
       await pool.query(
