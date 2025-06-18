@@ -32,9 +32,6 @@ const {
   isValidServico,
   isValidDataHora,
 } = require('../utils/validation');
-const {
-  listarDiasDisponiveis,
-} = require('../utils/dataHelpers');
 
 const sessionClient = new dialogflow.SessionsClient({
   keyFilename: process.env.DIALOGFLOW_KEYFILE,
