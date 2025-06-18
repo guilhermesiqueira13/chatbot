@@ -1,5 +1,5 @@
 const { listarHorariosDisponiveis } = require('../services/calendarService');
-const { DateTime } = require('./luxonShim');
+const { DateTime } = require('luxon');
 
 const TIME_ZONE = 'America/Sao_Paulo';
 
