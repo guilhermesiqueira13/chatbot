@@ -33,12 +33,16 @@ const MENSAGENS = {
     "Nenhum reagendamento em andamento. Quer reagendar um agendamento?",
   REAGENDAMENTO_CANCELADO:
     "Reagendamento cancelado. Deseja escolher outro horário?",
+  FLUXO_REAGENDAMENTO_EM_ANDAMENTO:
+    "Estamos no fluxo de reagendamento. Escolha uma das opções apresentadas ou envie 'Cancelar' para sair.",
   CLIENTE_NAO_ENCONTRADO:
     "Não encontramos seu cadastro. Por favor realize um agendamento primeiro.",
   SEM_AGENDAMENTOS_CANCELAR:
     "Você não tem agendamentos ativos para cancelar.",
   NENHUM_CANCELAMENTO:
     "Nenhum cancelamento em andamento. Quer cancelar um agendamento?",
+  FLUXO_CANCELAMENTO_EM_ANDAMENTO:
+    "Estamos no fluxo de cancelamento. Escolha uma das opções apresentadas ou envie 'Cancelar' para sair.",
   CANCELAMENTO_NAO_CONFIRMADO:
     "Cancelamento não confirmado. Deseja fazer algo mais?",
   AGENDAMENTO_NAO_CONFIRMADO:

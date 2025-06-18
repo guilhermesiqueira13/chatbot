@@ -40,6 +40,20 @@ const projectId = process.env.DIALOGFLOW_PROJECT_ID;
 
 const agendamentosPendentes = new Map();
 
+const FLUXO_INTENTS = {
+  reagendamento: new Set([
+    'reagendar_agendamento',
+    'confirmar_inicio_reagendamento',
+    'escolha_datahora_reagendamento',
+    'confirmar_reagendamento',
+  ]),
+  cancelamento: new Set([
+    'cancelar_agendamento',
+    'selecionar_cancelamento',
+    'confirmar_cancelamento',
+  ]),
+};
+
 function getEstado(from) {
   return agendamentosPendentes.get(from) || {};
 }
@@ -49,6 +63,12 @@ function setEstado(from, updates) {
   const novo = { ...atual, ...updates };
   agendamentosPendentes.set(from, novo);
   return novo;
+}
+
+function intentNoFluxo(intent, fluxo) {
+  if (!fluxo) return true;
+  const intents = FLUXO_INTENTS[fluxo];
+  return intents ? intents.has(intent) : true;
 }
 
 const SERVICOS_VALIDOS = {
@@ -316,6 +336,7 @@ async function handleCancelamento({ from }) {
     .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
     .join('\n');
   setEstado(from, {
+    fluxo: 'cancelamento',
     confirmationStep: 'awaiting_cancelar',
     agendamentos,
     clienteId: cliente.id,
@@ -372,6 +393,7 @@ async function handleReagendar({ from }) {
     .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
     .join('\n');
   setEstado(from, {
+    fluxo: 'reagendamento',
     confirmationStep: 'awaiting_reagendamento',
     agendamentos,
     clienteId: cliente.id,
@@ -402,10 +424,10 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   estado.servico = ag.servico;
   estado.horarioAtual = ag.horario;
   estado.confirmationStep = 'awaiting_reagendamento_data';
+  estado.horariosDisponiveis = await listarTodosHorariosDisponiveis();
   setEstado(from, estado);
   logger.info(from, `Reagendamento selecionado id=${ag.id} servico=${ag.servico}`);
-  const horarios = await listarTodosHorariosDisponiveis();
-  const lista = horarios
+  const lista = estado.horariosDisponiveis
     .map((h, i) => `${i + 1}. ${formatarDataHorarioBr(h.dia_horario)}`)
     .join('\n');
   return `Você está reagendando ${ag.servico} em ${formatarDataHorarioBr(ag.horario)}.` +
@@ -417,7 +439,7 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_data')
     return mensagens.NENHUM_REAGENDAMENTO;
-  const horarios = await listarTodosHorariosDisponiveis();
+  const horarios = estado.horariosDisponiveis || (await listarTodosHorariosDisponiveis());
   logger.info(from, `handleEscolhaDataHoraReagendamento - servico=${estado.servico}`);
   let escolha = parseInt(msg, 10);
   if (isNaN(escolha) && parametros && parametros['number']) {
@@ -484,7 +506,39 @@ async function handleDefault({ from, fulfillment }) {
         );
         return `Confirma o agendamento de *${estado.servico}* em *${resumo}* para *${estado.nome}*?`;
       }
+      case 'awaiting_cancelar': {
+        const lista = (estado.agendamentos || [])
+          .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
+          .join('\n');
+        return `Escolha o agendamento que deseja cancelar:\n${lista}`;
+      }
+      case 'awaiting_cancel_confirm': {
+        const ag = (estado.agendamentos || []).find(a => a.id === estado.agendamentoId);
+        const horario = ag ? formatarDataHorarioBr(ag.horario) : '';
+        return `Confirma o cancelamento de ${estado.servico} em ${horario}?`;
+      }
+      case 'awaiting_reagendamento': {
+        const lista = (estado.agendamentos || [])
+          .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
+          .join('\n');
+        return `Qual deseja reagendar?\n${lista}`;
+      }
+      case 'awaiting_reagendamento_data': {
+        const horarios = (estado.horariosDisponiveis || [])
+          .map((h, i) => `${i + 1}. ${formatarDataHorarioBr(h.dia_horario)}`)
+          .join('\n');
+        return `Escolha um novo horário:\n${horarios}`;
+      }
+      case 'awaiting_reagendamento_confirm': {
+        return `Confirma reagendar ${estado.servico} para ${formatarDataHorarioBr(estado.novoHorario)}?`;
+      }
       default:
+        if (estado.fluxo === 'reagendamento') {
+          return mensagens.FLUXO_REAGENDAMENTO_EM_ANDAMENTO;
+        }
+        if (estado.fluxo === 'cancelamento') {
+          return mensagens.FLUXO_CANCELAMENTO_EM_ANDAMENTO;
+        }
         break;
     }
   }
@@ -540,6 +594,12 @@ async function handleWebhook(req, res) {
     nome: cliente.nome,
     telefone: cliente.telefone,
   });
+
+  if (!intentNoFluxo(intent, estado.fluxo)) {
+    const respostaFluxo = await handleDefault({ from, fulfillment: '' });
+    logger.bot(from, respostaFluxo);
+    return res.json(createResponse(true, { reply: respostaFluxo }, null));
+  }
 
   let resposta;
   try {

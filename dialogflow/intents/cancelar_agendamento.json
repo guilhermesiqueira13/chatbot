@@ -1,0 +1,13 @@
+{
+  "displayName": "cancelar_agendamento",
+  "priority": 500000,
+  "trainingPhrases": [
+    { "type": "EXAMPLE", "parts": [ { "text": "Quero cancelar" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "Preciso cancelar meu horário" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "Desmarcar agendamento" } ] }
+  ],
+  "inputContextNames": [],
+  "outputContexts": [
+    { "name": "aguardando_cancelamento", "lifespanCount": 5 }
+  ]
+}

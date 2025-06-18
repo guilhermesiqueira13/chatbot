@@ -146,6 +146,13 @@ Para que o bot reconheça a escolha de dias e horários de forma natural, inclua
 - "Quero alterar meu horário para 17h."
 - "Consegue reagendar para o próximo sábado?"
 
+### Fluxos de Cancelamento e Reagendamento
+O backend mantém o contexto do fluxo em memória e somente processa intents compatíveis.
+Quando o usuário envia **"Cancelar"**, o bot exibe os agendamentos ativos e, após a escolha,
+pede confirmação do cancelamento. Para **"Reagendar"**, a lógica é similar: primeiro lista os agendamentos e,
+após a seleção, solicita a nova data e horário. Intents de outros fluxos são ignoradas enquanto o contexto estiver ativo,
+evitando quedas para respostas de "não entendi".
+
 ### Confirmação e Feedback
 Ao final do fluxo o bot sempre envia uma mensagem de resumo com o serviço, data e horário confirmados. A resposta também lembra que você pode reagendar ou cancelar a qualquer momento respondendo **"Reagendar"** ou **"Cancelar"**. Os agendamentos somente são permitidos de segunda a sábado, das 09h às 18h.
 
