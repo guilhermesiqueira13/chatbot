@@ -27,7 +27,7 @@ const {
 const mensagens = require('../utils/mensagensUsuario');
 const logger = require('../utils/logger');
 const { createResponse } = require('../utils/apiResponse');
-const { parseEscolhaDia } = require('../utils/respostaParser');
+const { parseEscolhaDia, parseEscolhaAgendamento } = require('../utils/respostaParser');
 const {
   isValidNome,
   isValidServico,
@@ -85,10 +85,14 @@ async function detectIntent(from, text) {
     queryInput: { text: { text, languageCode: 'pt-BR' } },
   };
   const [response] = await sessionClient.detectIntent(request);
+  const contexts = (response.queryResult.outputContexts || []).map((c) =>
+    c.name.split('/').pop(),
+  );
   return {
     intent: response.queryResult.intent?.displayName || 'default',
     parameters: response.queryResult.parameters?.fields || {},
     fulfillment: response.queryResult.fulfillmentText,
+    contexts,
   };
 }
 
@@ -404,16 +408,16 @@ async function handleReagendar({ from }) {
 }
 
 /** Confirma o agendamento a ser reagendado */
-async function handleConfirmarInicioReagendamento({ from, msg }) {
+async function handleConfirmarInicioReagendamento({ from, msg, contexts }) {
   const estado = agendamentosPendentes.get(from);
-  if (!estado || estado.confirmationStep !== 'awaiting_reagendamento')
+  if (
+    !estado ||
+    estado.confirmationStep !== 'awaiting_reagendamento' ||
+    (contexts && !contexts.includes('reagendamento_awaiting_datahora'))
+  )
     return mensagens.NENHUM_REAGENDAMENTO;
-  const escolha = parseInt(msg, 10);
-  const idx = escolha - 1;
-  const ag =
-    !isNaN(escolha) && escolha > 0 && escolha <= estado.agendamentos.length
-      ? estado.agendamentos[idx]
-      : null;
+
+  const ag = parseEscolhaAgendamento(msg, estado.agendamentos);
   if (!ag) {
     const lista = estado.agendamentos
       .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
@@ -429,6 +433,7 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   estado.diaIndex = 0;
   estado.novoDia = null;
   estado.horariosReagendamento = [];
+  estado.contextoDialogflow = 'reagendamento_datahora_selected';
   setEstado(from, estado);
   logger.info(from, `Reagendamento selecionado id=${ag.id} servico=${ag.servico}`);
   const listaDias = listarPrimeirosDias(estado.diasDisponiveis);
@@ -609,8 +614,8 @@ const intentHandlers = {
   selecionar_cancelamento: handleSelecionarCancelamento,
   confirmar_cancelamento: handleConfirmarCancelamento,
   reagendar_agendamento: handleReagendar,
-  confirmar_inicio_reagendamento: handleConfirmarInicioReagendamento,
-  escolha_datahora_reagendamento: handleEscolhaDataHoraReagendamento,
+  escolha_datahora_reagendamento: handleConfirmarInicioReagendamento,
+  confirmar_inicio_reagendamento: handleEscolhaDataHoraReagendamento,
   confirmar_reagendamento: handleConfirmarReagendamento,
 };
 
@@ -645,7 +650,7 @@ async function handleWebhook(req, res) {
     return res.json(createResponse(false, null, mensagens.ERRO_GERAL));
   }
 
-  const { intent, parameters, fulfillment } = await detectIntent(from, msg);
+  const { intent, parameters, fulfillment, contexts } = await detectIntent(from, msg);
   logger.dialogflow(intent, parameters);
   const estado = setEstado(from, {
     clienteId: cliente.id,
@@ -663,7 +668,7 @@ async function handleWebhook(req, res) {
   try {
     const handler = intentHandlers[intent];
     if (handler) {
-      resposta = await handler({ from, msg, parametros: parameters });
+      resposta = await handler({ from, msg, parametros: parameters, contexts });
     } else {
       resposta = await handleDefault({ from, fulfillment });
     }

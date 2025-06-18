@@ -64,4 +64,30 @@ function parseEscolhaDia(input) {
   return { type: 'invalid', error: DEFAULT_ERROR_MSG };
 }
 
-module.exports = { parseEscolhaDia, DEFAULT_ERROR_MSG, removeAccents };
+const { formatarDataHorarioBr } = require('./dataHelpers');
+
+function parseEscolhaAgendamento(input, agendamentos) {
+  if (!input || !Array.isArray(agendamentos)) return null;
+  const texto = removeAccents(String(input).trim().toLowerCase());
+  const numero = parseInt(texto, 10);
+  if (!isNaN(numero)) return agendamentos[numero - 1] || null;
+
+  return (
+    agendamentos.find((a) => {
+      const desc = removeAccents(
+        `${a.servico} ${formatarDataHorarioBr(a.horario)}`.toLowerCase(),
+      );
+      const descEm = removeAccents(
+        `${a.servico} em ${formatarDataHorarioBr(a.horario)}`.toLowerCase(),
+      );
+      return texto === desc || texto === descEm;
+    }) || null
+  );
+}
+
+module.exports = {
+  parseEscolhaDia,
+  DEFAULT_ERROR_MSG,
+  removeAccents,
+  parseEscolhaAgendamento,
+};
