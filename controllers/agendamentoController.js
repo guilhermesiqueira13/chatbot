@@ -38,12 +38,22 @@ async function ensureHorarioColumn() {
   }
 }
 
+const { DateTime } = require('luxon');
+const TIME_ZONE = 'America/Sao_Paulo';
+
 async function buscarHorariosDisponiveis(data) {
   if (isNaN(new Date(data).getTime())) {
     throw new ValidationError("Data inválida");
   }
   try {
     const horarios = await listarHorariosDisponiveis(data);
+
+    const hoje = DateTime.now().setZone(TIME_ZONE).toISODate();
+    if (data === hoje) {
+      const agora = DateTime.now().setZone(TIME_ZONE).toFormat('HH:mm');
+      return horarios.filter((h) => h >= agora);
+    }
+
     return horarios;
   } catch (error) {
     logger.error(null, error);
