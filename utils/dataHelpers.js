@@ -1,33 +1,31 @@
 const { listarHorariosDisponiveis } = require('../services/calendarService');
-const dayjs = require('dayjs');
+const { DateTime } = require('./luxonShim');
+
+const TIME_ZONE = 'America/Sao_Paulo';
 
 function formatarDataHorarioBr(date) {
-  const data = new Date(date);
-  if (isNaN(data.getTime())) {
+  const dt =
+    typeof date === 'string'
+      ? DateTime.fromISO(date, { zone: TIME_ZONE })
+      : DateTime.fromJSDate(date).setZone(TIME_ZONE);
+  if (!dt.isValid) {
     throw new Error('Data inválida fornecida');
   }
-  const dataStr = data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  const horaStr = data.toLocaleTimeString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  return `${dataStr} ${horaStr}`;
+  return dt.setLocale('pt-BR').toFormat('dd/LL/yyyy HH:mm');
 }
 
 function encontrarHorarioProximo(horarioSolicitadoStr, horariosDisponiveis) {
   if (!horarioSolicitadoStr || !horariosDisponiveis || !horariosDisponiveis.length) {
     return null;
   }
-  const solicitado = new Date(horarioSolicitadoStr);
-  if (isNaN(solicitado.getTime())) return null;
+  const solicitado = DateTime.fromISO(horarioSolicitadoStr, { zone: TIME_ZONE });
+  if (!solicitado.isValid) return null;
 
   return horariosDisponiveis.reduce(
     (maisProximo, horario) => {
-      const disponivel = new Date(horario.dia_horario);
-      if (isNaN(disponivel.getTime())) return maisProximo;
-      const diferenca = Math.abs(solicitado - disponivel);
+      const disponivel = DateTime.fromISO(horario.dia_horario, { zone: TIME_ZONE });
+      if (!disponivel.isValid) return maisProximo;
+      const diferenca = Math.abs(solicitado.diff(disponivel).milliseconds);
       if (diferenca < maisProximo.diferenca) {
         return { horario, diferenca };
       }
@@ -53,35 +51,29 @@ function getDateFromWeekdayAndTime(diaSemanaStr, horaStr) {
   if (diaSemanaIndex === -1) return null;
 
   const [hora, minuto = '00'] = horaStr.split(':');
-  const hoje = new Date();
-  let data = new Date(hoje);
+  const hoje = DateTime.now().setZone(TIME_ZONE);
+  let data = hoje.plus({ days: (diaSemanaIndex - hoje.weekday + 7) % 7 });
+  data = data.set({ hour: parseInt(hora, 10), minute: parseInt(minuto, 10), second: 0, millisecond: 0 });
 
-  const diferencaDias = (diaSemanaIndex - hoje.getDay() + 7) % 7;
-  data.setDate(hoje.getDate() + diferencaDias);
-
-  data.setHours(parseInt(hora, 10), parseInt(minuto, 10), 0, 0);
-
-  if (data < hoje && diferencaDias === 0) {
-    data.setDate(data.getDate() + 7);
+  if (data < hoje && diaSemanaIndex === hoje.weekday - 1) {
+    data = data.plus({ days: 7 });
   }
 
-  return data;
+  return data.toJSDate();
 }
 
 async function listarTodosHorariosDisponiveis(dias = 7) {
   const horarios = [];
-  const hoje = new Date();
+  const hoje = DateTime.now().setZone(TIME_ZONE).startOf('day');
   let adicionados = 0;
   let offset = 0;
   while (adicionados < dias) {
-    const data = new Date(hoje);
-    data.setDate(hoje.getDate() + offset);
+    const data = hoje.plus({ days: offset });
     offset++;
-    // Ignora domingos
-    if (dayjs(data).day() === 0) {
+    if (data.weekday === 7) {
       continue;
     }
-    const dataStr = data.toISOString().slice(0, 10);
+    const dataStr = data.toISODate();
     const horas = await listarHorariosDisponiveis(dataStr);
     for (const hora of horas) {
       horarios.push({ dia_horario: `${dataStr}T${hora}:00` });
@@ -95,11 +87,12 @@ async function listarDiasDisponiveis(dias = 14) {
   const horarios = await listarTodosHorariosDisponiveis(dias);
   const diasMap = {};
   for (const h of horarios) {
-    const [data, horaParte] = h.dia_horario.split('T');
-    if (dayjs(data).day() === 0) {
+    const dt = DateTime.fromISO(h.dia_horario, { zone: TIME_ZONE });
+    if (dt.weekday === 7) {
       continue;
     }
-    const hora = horaParte.slice(0, 5);
+    const data = dt.toISODate();
+    const hora = dt.toFormat('HH:mm');
     if (!diasMap[data]) diasMap[data] = [];
     diasMap[data].push(hora);
   }
@@ -107,15 +100,12 @@ async function listarDiasDisponiveis(dias = 14) {
 }
 
 function formatarDiaBr(dataStr) {
-  const data = new Date(dataStr);
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const dia = data
-    .toLocaleDateString('pt-BR', { weekday: 'long' })
-    .replace('-feira', '');
-  const dataFmt = data.toLocaleDateString('pt-BR');
+  const data = DateTime.fromISO(dataStr, { zone: TIME_ZONE });
+  const hoje = DateTime.now().setZone(TIME_ZONE).startOf('day');
+  const dia = data.setLocale('pt-BR').toFormat('cccc');
+  const dataFmt = data.toFormat('dd/LL/yyyy');
   const diaCapitalizado = dia.charAt(0).toUpperCase() + dia.slice(1);
-  const eHoje = data.toDateString() === hoje.toDateString();
+  const eHoje = data.hasSame(hoje, 'day');
   return `${eHoje ? 'Hoje' : diaCapitalizado} (${dataFmt})`;
 }
 
