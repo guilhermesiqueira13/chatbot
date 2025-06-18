@@ -1,4 +1,9 @@
-const { parseEscolhaDia, DEFAULT_ERROR_MSG } = require('../utils/respostaParser');
+const {
+  parseEscolhaDia,
+  DEFAULT_ERROR_MSG,
+  parseEscolhaAgendamento,
+} = require('../utils/respostaParser');
+const { formatarDataHorarioBr } = require('../utils/dataHelpers');
 
 describe('parseEscolhaDia', () => {
   test('reconhece dia da semana', () => {
@@ -39,5 +44,28 @@ describe('parseEscolhaDia', () => {
   test('retorna erro para entrada invalida', () => {
     const res = parseEscolhaDia('xyz');
     expect(res).toEqual({ type: 'invalid', error: DEFAULT_ERROR_MSG });
+  });
+});
+
+describe('parseEscolhaAgendamento', () => {
+  const ags = [
+    { id: 1, servico: 'Corte', horario: '2030-01-01T10:00:00-03:00' },
+    { id: 2, servico: 'Barba', horario: '2030-01-02T12:00:00-03:00' },
+  ];
+
+  test('seleciona por numero', () => {
+    const res = parseEscolhaAgendamento('1', ags);
+    expect(res).toEqual(ags[0]);
+  });
+
+  test('seleciona por descricao', () => {
+    const texto = `Barba ${formatarDataHorarioBr(ags[1].horario)}`;
+    const res = parseEscolhaAgendamento(texto, ags);
+    expect(res).toEqual(ags[1]);
+  });
+
+  test('retorna null quando invalido', () => {
+    const res = parseEscolhaAgendamento('Outro', ags);
+    expect(res).toBeNull();
   });
 });
