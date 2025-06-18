@@ -3,6 +3,47 @@ const { DateTime } = require('luxon');
 
 const TIME_ZONE = 'America/Sao_Paulo';
 
+function removeAccents(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * Converte o texto de um dia da semana ("quinta", "sabado", "hoje", etc)
+ * para a data (YYYY-MM-DD) da próxima ocorrência a partir de hoje.
+ * O cálculo considera sempre o fuso "America/Sao_Paulo".
+ * @param {string} texto
+ * @returns {string|null} Data no formato ISO ou null se inválido
+ */
+function getNextDateFromText(texto) {
+  if (!texto || typeof texto !== 'string') return null;
+  const norm = removeAccents(texto.trim().toLowerCase());
+
+  const hoje = DateTime.now().setZone(TIME_ZONE).startOf('day');
+
+  if (norm === 'hoje') return hoje.toISODate();
+  if (norm === 'amanha') return hoje.plus({ days: 1 }).toISODate();
+
+  const dias = [
+    'domingo',
+    'segunda',
+    'terca',
+    'quarta',
+    'quinta',
+    'sexta',
+    'sabado',
+  ];
+
+  let idx = dias.indexOf(norm);
+  if (idx === -1) {
+    idx = dias.findIndex((d) => d.startsWith(norm));
+  }
+  if (idx === -1) return null;
+
+  const hojeIdx = hoje.weekday % 7; // domingo -> 0
+  const delta = (idx - hojeIdx + 7) % 7;
+  return hoje.plus({ days: delta }).toISODate();
+}
+
 function formatarDataHorarioBr(date) {
   const dt =
     typeof date === 'string'
@@ -127,4 +168,5 @@ module.exports = {
   formatarDiaBr,
   gerarMensagemDias,
   gerarMensagemHorarios,
+  getNextDateFromText,
 };
