@@ -19,7 +19,13 @@ describe('agendamentoController', () => {
     pool.query.mockImplementation((sql) => {
       if (sql.startsWith('SHOW COLUMNS')) return Promise.resolve([[]]);
       if (sql.startsWith('ALTER TABLE')) return Promise.resolve();
+      if (sql.startsWith('START TRANSACTION')) return Promise.resolve();
+      if (sql.startsWith('COMMIT')) return Promise.resolve();
+      if (sql.startsWith('ROLLBACK')) return Promise.resolve();
       if (sql.startsWith('INSERT INTO agendamentos')) return Promise.resolve([{ insertId: 7 }]);
+      if (sql.startsWith('SELECT id, nome FROM servicos'))
+        return Promise.resolve([[{ id: 1 }, { id: 2 }]]);
+      if (sql.startsWith('INSERT INTO agendamentos_servicos')) return Promise.resolve();
       return Promise.resolve([]);
     });
 
@@ -38,6 +44,8 @@ describe('agendamentoController', () => {
       servicos: ['corte', 'barba'],
       horario: '2030-01-01T09:00:00-03:00'
     });
+    const insertCalls = pool.query.mock.calls.filter(c => c[0].trim().startsWith('INSERT INTO agendamentos_servicos'));
+    expect(insertCalls.length).toBe(2);
     expect(resp).toEqual({ success: true, agendamentoId: 7, eventId: 'e1' });
   });
 

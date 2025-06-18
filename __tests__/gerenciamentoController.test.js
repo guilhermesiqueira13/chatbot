@@ -18,6 +18,7 @@ jest.mock('../services/calendarService', () => ({
 const calendarService = require('../services/calendarService');
 
 const { cancelarAgendamento } = require('../controllers/gerenciamentoController');
+const { listarAgendamentosAtivos } = require('../controllers/gerenciamentoController');
 
 describe('gerenciamentoController', () => {
   beforeEach(() => {
@@ -34,5 +35,12 @@ describe('gerenciamentoController', () => {
     expect(calendarService.cancelarAgendamento).toHaveBeenCalledWith('g1');
     expect(connection.query).toHaveBeenCalledWith('UPDATE agendamentos SET status = "cancelado" WHERE id = ?', [5]);
     expect(resp).toEqual({ success: true });
+  });
+
+  test('listarAgendamentosAtivos utiliza join com servicos', async () => {
+    pool.query.mockResolvedValue([[]]);
+    await listarAgendamentosAtivos(3);
+    const calledSql = pool.query.mock.calls[0][0];
+    expect(calledSql).toMatch(/JOIN agendamentos_servicos/);
   });
 });
