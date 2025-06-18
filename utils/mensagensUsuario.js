@@ -33,6 +33,8 @@ const MENSAGENS = {
     "Nenhum reagendamento em andamento. Quer reagendar um agendamento?",
   REAGENDAMENTO_CANCELADO:
     "Reagendamento cancelado. Deseja escolher outro horário?",
+  CLIENTE_NAO_ENCONTRADO:
+    "Não encontramos seu cadastro. Por favor realize um agendamento primeiro.",
   SEM_AGENDAMENTOS_CANCELAR:
     "Você não tem agendamentos ativos para cancelar.",
   NENHUM_CANCELAMENTO:
