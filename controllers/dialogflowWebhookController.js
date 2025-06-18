@@ -32,6 +32,9 @@ const {
   isValidServico,
   isValidDataHora,
 } = require('../utils/validation');
+const {
+  listarDiasDisponiveis,
+} = require('../utils/dataHelpers');
 
 const sessionClient = new dialogflow.SessionsClient({
   keyFilename: process.env.DIALOGFLOW_KEYFILE,
@@ -424,43 +427,91 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   estado.servico = ag.servico;
   estado.horarioAtual = ag.horario;
   estado.confirmationStep = 'awaiting_reagendamento_data';
-  estado.horariosDisponiveis = await listarTodosHorariosDisponiveis();
+  estado.diasDisponiveis = await listarDiasDisponiveis(14);
+  estado.diaIndex = 0;
   setEstado(from, estado);
   logger.info(from, `Reagendamento selecionado id=${ag.id} servico=${ag.servico}`);
-  const lista = estado.horariosDisponiveis
-    .map((h, i) => `${i + 1}. ${formatarDataHorarioBr(h.dia_horario)}`)
-    .join('\n');
+  const listaDias = listarPrimeirosDias(estado.diasDisponiveis);
   return `Você está reagendando ${ag.servico} em ${formatarDataHorarioBr(ag.horario)}.` +
-    `\nEscolha um novo horário:\n${lista}`;
+    `\nPara qual dia deseja remarcar?\n${listaDias}`;
 }
 
 /** Recebe a nova data e hora para o reagendamento */
 async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
   const estado = agendamentosPendentes.get(from);
-  if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_data')
-    return mensagens.NENHUM_REAGENDAMENTO;
-  const horarios = estado.horariosDisponiveis || (await listarTodosHorariosDisponiveis());
-  logger.info(from, `handleEscolhaDataHoraReagendamento - servico=${estado.servico}`);
-  let escolha = parseInt(msg, 10);
-  if (isNaN(escolha) && parametros && parametros['number']) {
-    escolha = parseInt(parametros['number'].stringValue, 10);
+  if (!estado) return mensagens.NENHUM_REAGENDAMENTO;
+
+  if (estado.confirmationStep === 'awaiting_reagendamento_data') {
+    let escolhido = null;
+    let paramDate = parametros['date-time']?.stringValue || parametros.date?.stringValue;
+    if (paramDate) {
+      escolhido = String(paramDate).split('T')[0];
+    } else {
+      const parsed = parseEscolhaDia(msg.toLowerCase());
+      const diasDisp = estado.diasDisponiveis || {};
+      const diasKeys = Object.keys(diasDisp);
+      if (parsed.type === 'verMais') {
+        estado.diaIndex += 6;
+        const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+        setEstado(from, estado);
+        return `Mais opções de dias:\n${listaDias}`;
+      }
+      if (parsed.type === 'weekday') {
+        const possiveis = diasKeys.filter((d) => new Date(d).getDay() === parsed.value);
+        if (possiveis.length) {
+          escolhido = parsed.next ? possiveis[1] || possiveis[0] : possiveis[0];
+        }
+      } else if (parsed.type === 'date') {
+        if (diasKeys.includes(parsed.value)) escolhido = parsed.value;
+      }
+    }
+
+    const diasDisp = estado.diasDisponiveis || {};
+    const diasKeys = Object.keys(diasDisp);
+    if (!escolhido || !diasKeys.includes(escolhido)) {
+      const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+      return `Dia inválido. Escolha um destes:\n${listaDias}`;
+    }
+
+    estado.novoDia = escolhido;
+    estado.horariosReagendamento = await buscarHorariosDisponiveis(escolhido);
+    if (!estado.horariosReagendamento.length) {
+      return mensagens.SEM_HORARIOS_DISPONIVEIS;
+    }
+    estado.confirmationStep = 'awaiting_reagendamento_time';
+    setEstado(from, estado);
+    const lista = gerarMensagemHorarios(estado.horariosReagendamento);
+    return `Horários disponíveis para ${formatarDiaBr(escolhido)}:\n${lista}`;
   }
-  const idx = escolha - 1;
-  const h =
-    !isNaN(escolha) && escolha > 0 && escolha <= horarios.length
-      ? horarios[idx]
-      : null;
-  if (!h) {
-    const lista = horarios
-      .map((hr, i) => `${i + 1}. ${formatarDataHorarioBr(hr.dia_horario)}`)
-      .join('\n');
-    return `Horário inválido. Escolha um dos horários disponíveis:\n${lista}`;
+
+  if (estado.confirmationStep === 'awaiting_reagendamento_time') {
+    const horariosDia = estado.horariosReagendamento || [];
+    let hora = null;
+    if (parametros['date-time']?.stringValue) {
+      const dt = new Date(parametros['date-time'].stringValue);
+      const dataParam = dt.toISOString().slice(0, 10);
+      if (dataParam === estado.novoDia) {
+        hora = dt.toTimeString().slice(0, 5);
+      }
+    } else if (parametros.time?.stringValue) {
+      hora = parametros.time.stringValue.slice(11, 16);
+    }
+    if (!hora) {
+      const num = parseInt(msg, 10);
+      if (!isNaN(num)) hora = horariosDia[num - 1];
+    }
+    if (!hora || !horariosDia.includes(hora)) {
+      const lista = gerarMensagemHorarios(horariosDia);
+      return `Horário inválido. Escolha um dos seguintes:\n${lista}`;
+    }
+
+    estado.novoHorario = `${estado.novoDia}T${hora}:00`;
+    estado.confirmationStep = 'awaiting_reagendamento_confirm';
+    setEstado(from, estado);
+    return `Confirma reagendar ${estado.servico} para ${formatarDataHorarioBr(estado.novoHorario)}?`;
   }
-  estado.novoHorario = h.dia_horario;
-  estado.confirmationStep = 'awaiting_reagendamento_confirm';
-  setEstado(from, estado);
-  logger.info(from, `Novo horario escolhido: ${estado.novoHorario} para servico ${estado.servico}`);
-  return `Confirma reagendar ${estado.servico} para ${formatarDataHorarioBr(h.dia_horario)}?`;
+
+  return mensagens.NENHUM_REAGENDAMENTO;
 }
 
 /** Finaliza o reagendamento se confirmado */
@@ -524,10 +575,13 @@ async function handleDefault({ from, fulfillment }) {
         return `Qual deseja reagendar?\n${lista}`;
       }
       case 'awaiting_reagendamento_data': {
-        const horarios = (estado.horariosDisponiveis || [])
-          .map((h, i) => `${i + 1}. ${formatarDataHorarioBr(h.dia_horario)}`)
-          .join('\n');
-        return `Escolha um novo horário:\n${horarios}`;
+        const diasDisp = estado.diasDisponiveis || {};
+        const lista = listarPrimeirosDias(diasDisp, estado.diaIndex);
+        return `Informe o dia desejado:\n${lista}`;
+      }
+      case 'awaiting_reagendamento_time': {
+        const horarios = gerarMensagemHorarios(estado.horariosReagendamento || []);
+        return `Escolha um horário disponível:\n${horarios}`;
       }
       case 'awaiting_reagendamento_confirm': {
         return `Confirma reagendar ${estado.servico} para ${formatarDataHorarioBr(estado.novoHorario)}?`;
@@ -572,6 +626,11 @@ async function handleWebhook(req, res) {
   logger.user(from, msg);
 
   const texto = (msg || '').trim().toLowerCase();
+  if (/^\d+$/.test(texto) && !agendamentosPendentes.has(from)) {
+    const reply = mensagens.NAO_ENTENDI;
+    logger.bot(from, reply);
+    return res.json(createResponse(true, { reply }, null));
+  }
   if (/^(cancelar|voltar|reiniciar)/.test(texto)) {
     agendamentosPendentes.delete(from);
     const respostaReinicio = await handleWelcome({ from });
