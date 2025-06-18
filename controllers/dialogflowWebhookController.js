@@ -17,6 +17,7 @@ const {
 } = require('./clienteController');
 const {
   agendarServico,
+  buscarHorariosDisponiveis,
 } = require('./agendamentoController');
 const {
   listarAgendamentosAtivos,
@@ -134,7 +135,7 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || !estado.servico) return mensagens.ESCOLHA_SERVICO_PRIMEIRO;
   logger.info(from, `handleEscolhaDataHora - step ${estado.confirmationStep} servico=${estado.servico}`);
-  if (estado.confirmationStep === 'awaiting_reagendamento_data') {
+  if (estado.confirmationStep === 'awaiting_reagendamento_time') {
     return handleEscolhaDataHoraReagendamento({ from, msg, parametros });
   }
 
@@ -423,9 +424,11 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   estado.eventId = ag.google_event_id;
   estado.servico = ag.servico;
   estado.horarioAtual = ag.horario;
-  estado.confirmationStep = 'awaiting_reagendamento_data';
+  estado.confirmationStep = 'awaiting_reagendamento_time';
   estado.diasDisponiveis = await listarDiasDisponiveis(14);
   estado.diaIndex = 0;
+  estado.novoDia = null;
+  estado.horariosReagendamento = [];
   setEstado(from, estado);
   logger.info(from, `Reagendamento selecionado id=${ag.id} servico=${ag.servico}`);
   const listaDias = listarPrimeirosDias(estado.diasDisponiveis);
@@ -438,7 +441,7 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado) return mensagens.NENHUM_REAGENDAMENTO;
 
-  if (estado.confirmationStep === 'awaiting_reagendamento_data') {
+  if (estado.confirmationStep === 'awaiting_reagendamento_time' && !estado.novoDia) {
     let escolhido = null;
     let paramDate = parametros['date-time']?.stringValue || parametros.date?.stringValue;
     if (paramDate) {
@@ -475,7 +478,6 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
     if (!estado.horariosReagendamento.length) {
       return mensagens.SEM_HORARIOS_DISPONIVEIS;
     }
-    estado.confirmationStep = 'awaiting_reagendamento_time';
     setEstado(from, estado);
     const lista = gerarMensagemHorarios(estado.horariosReagendamento);
     return `Horários disponíveis para ${formatarDiaBr(escolhido)}:\n${lista}`;
@@ -571,12 +573,12 @@ async function handleDefault({ from, fulfillment }) {
           .join('\n');
         return `Qual deseja reagendar?\n${lista}`;
       }
-      case 'awaiting_reagendamento_data': {
-        const diasDisp = estado.diasDisponiveis || {};
-        const lista = listarPrimeirosDias(diasDisp, estado.diaIndex);
-        return `Informe o dia desejado:\n${lista}`;
-      }
       case 'awaiting_reagendamento_time': {
+        if (!estado.novoDia) {
+          const diasDisp = estado.diasDisponiveis || {};
+          const lista = listarPrimeirosDias(diasDisp, estado.diaIndex);
+          return `Informe o dia desejado:\n${lista}`;
+        }
         const horarios = gerarMensagemHorarios(estado.horariosReagendamento || []);
         return `Escolha um horário disponível:\n${horarios}`;
       }
