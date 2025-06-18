@@ -380,8 +380,12 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento')
     return mensagens.NENHUM_REAGENDAMENTO;
-  const idx = parseInt(msg) - 1;
-  const ag = estado.agendamentos[idx];
+  const escolha = parseInt(msg, 10);
+  const idx = escolha - 1;
+  const ag =
+    !isNaN(escolha) && escolha > 0 && escolha <= estado.agendamentos.length
+      ? estado.agendamentos[idx]
+      : null;
   if (!ag) {
     const lista = estado.agendamentos
       .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
@@ -408,8 +412,12 @@ async function handleEscolhaDataHoraReagendamento({ from, msg }) {
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_data')
     return mensagens.NENHUM_REAGENDAMENTO;
   const horarios = await listarTodosHorariosDisponiveis();
-  const idx = parseInt(msg) - 1;
-  const h = horarios[idx];
+  const escolha = parseInt(msg, 10);
+  const idx = escolha - 1;
+  const h =
+    !isNaN(escolha) && escolha > 0 && escolha <= horarios.length
+      ? horarios[idx]
+      : null;
   if (!h) {
     const lista = horarios
       .map((hr, i) => `${i + 1}. ${formatarDataHorarioBr(hr.dia_horario)}`)
