@@ -113,6 +113,8 @@ async function agendarServico({
       horario,
     });
 
+    await pool.query('START TRANSACTION');
+
     const [result] = await pool.query(
       `INSERT INTO agendamentos (cliente_id, google_event_id, horario, status, data_agendamento)
        VALUES (?, ?, ?, 'ativo', NOW())`,
@@ -120,13 +122,36 @@ async function agendarServico({
     );
     const agendamentoId = result.insertId;
 
-    // A associação de vários serviços ao agendamento deve ser feita em outra
-    // camada (agendamentos_servicos). Mantemos somente a criação do evento no
-    // Calendar aqui.
+    const placeholders = servicos.map(() => '?').join(',');
+    const [servRows] = await pool.query(
+      `SELECT id, nome FROM servicos WHERE nome IN (${placeholders})`,
+      servicos
+    );
+    if (servRows.length !== servicos.length) {
+      await pool.query('ROLLBACK');
+      return {
+        success: false,
+        message: mensagens.SERVICO_INVALIDO,
+      };
+    }
+
+    for (const { id: servicoId } of servRows) {
+      await pool.query(
+        'INSERT INTO agendamentos_servicos (agendamento_id, servico_id) VALUES (?, ?)',
+        [agendamentoId, servicoId]
+      );
+    }
+
+    await pool.query('COMMIT');
 
     return { success: true, agendamentoId, eventId: evento.id };
   } catch (error) {
     logger.error(null, error);
+    try {
+      await pool.query('ROLLBACK');
+    } catch (e) {
+      logger.error(null, e);
+    }
     return {
       success: false,
       message: mensagens.ERRO_AGENDAR,

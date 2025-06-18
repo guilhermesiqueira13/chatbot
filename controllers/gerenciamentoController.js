@@ -16,19 +16,21 @@ async function cancelarAgendamento(agendamentoId, googleEventId, clienteId = nul
     let eventId = googleEventId;
     if (!eventId) {
       let query =
-        'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"';
+        `SELECT a.google_event_id FROM agendamentos a
+         JOIN agendamentos_servicos asv ON a.id = asv.agendamento_id
+         WHERE a.id = ? AND a.status = "ativo"`;
       const params = [agendamentoId];
       if (clienteId) {
-        query += ' AND cliente_id = ?';
+        query += ' AND a.cliente_id = ?';
         params.push(clienteId);
       }
       const [agendamento] = await connection.query(query, params);
-      
+
       if (!agendamento || agendamento.length === 0) {
         await connection.release();
         return {
           success: false,
-          message: "Agendamento não encontrado ou já cancelado.",
+          message: "Agendamento não encontrado ou sem serviço vinculado.",
         };
       }
 
@@ -74,11 +76,13 @@ async function listarAgendamentosAtivos(clienteId) {
   }
   try {
     const [rows] = await pool.query(
-      `SELECT a.id, a.google_event_id, a.horario, s.nome AS servico
+      `SELECT a.id, a.google_event_id, a.horario,
+              GROUP_CONCAT(s.nome ORDER BY s.nome SEPARATOR ', ') AS servico
        FROM agendamentos a
        JOIN agendamentos_servicos asv ON a.id = asv.agendamento_id
        JOIN servicos s ON asv.servico_id = s.id
-       WHERE a.cliente_id = ? AND a.status = 'ativo'`,
+       WHERE a.cliente_id = ? AND a.status = 'ativo'
+       GROUP BY a.id`,
       [clienteId]
     );
     return rows;
@@ -102,10 +106,12 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId, c
     let eventId = googleEventId;
     if (!eventId) {
       let query =
-        'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"';
+        `SELECT a.google_event_id FROM agendamentos a
+         JOIN agendamentos_servicos asv ON a.id = asv.agendamento_id
+         WHERE a.id = ? AND a.status = "ativo"`;
       const params = [agendamentoId];
       if (clienteId) {
-        query += ' AND cliente_id = ?';
+        query += ' AND a.cliente_id = ?';
         params.push(clienteId);
       }
       const [agendamento] = await pool.query(query, params);
@@ -113,7 +119,7 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId, c
         await pool.query("ROLLBACK");
         return {
           success: false,
-          message: "Agendamento não encontrado ou já cancelado.",
+          message: "Agendamento não encontrado ou sem serviço vinculado.",
         };
       }
       eventId = agendamento[0].google_event_id;
