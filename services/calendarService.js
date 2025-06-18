@@ -1,6 +1,7 @@
 require("dotenv").config();
 const { google } = require("googleapis");
 const path = require("path");
+const { DateTime } = require("../utils/luxonShim");
 
 // ID fixo do calendário utilizado pelo bot
 const CALENDAR_ID =
@@ -27,13 +28,13 @@ const calendar = google.calendar({ version: "v3", auth });
  */
 async function listarHorariosDisponiveis(data) {
   const [ano, mes, dia] = data.split("-");
-  const inicioDia = `${ano}-${mes}-${dia}T00:00:00-03:00`;
-  const fimDia = `${ano}-${mes}-${dia}T23:59:59-03:00`;
+  const inicioDia = DateTime.fromObject({ year: +ano, month: +mes, day: +dia }, { zone: TIME_ZONE }).startOf('day');
+  const fimDia = inicioDia.endOf('day');
 
   const res = await calendar.events.list({
     calendarId: CALENDAR_ID,
-    timeMin: inicioDia,
-    timeMax: fimDia,
+    timeMin: inicioDia.toISO(),
+    timeMax: fimDia.toISO(),
     singleEvents: true,
     orderBy: "startTime",
   });
@@ -41,25 +42,24 @@ async function listarHorariosDisponiveis(data) {
   const eventos = res.data.items || [];
   const horariosOcupados = eventos.map((e) => {
     const dt = e.start.dateTime || e.start.date;
-    return new Date(dt).toTimeString().slice(0, 5);
+    return DateTime.fromISO(dt, { zone: TIME_ZONE }).toFormat("HH:mm");
   });
 
   const disponiveis = [];
-  const base = new Date(`${ano}-${mes}-${dia}T09:00:00-03:00`);
-  const limite = new Date(`${ano}-${mes}-${dia}T18:00:00-03:00`);
-  for (let t = new Date(base); t < limite; t.setMinutes(t.getMinutes() + 30)) {
-    const horario = t.toTimeString().slice(0, 5);
+  let t = inicioDia.set({ hour: 9, minute: 0 });
+  const limite = inicioDia.set({ hour: 18, minute: 0 });
+  while (t < limite) {
+    const horario = t.toFormat("HH:mm");
     if (!horariosOcupados.includes(horario)) {
       disponiveis.push(horario);
     }
+    t = t.plus({ minutes: 30 });
   }
 
   // Remove quaisquer horários que caiam em domingo
   const filtrados = disponiveis.filter((h) => {
-    const dt = new Date(`${ano}-${mes}-${dia}T${h}:00-03:00`);
-    const day = dt.getDay();
-    // 0 = Sunday, so exclude only that day
-    return day !== 0;
+    const dt = DateTime.fromISO(`${ano}-${mes}-${dia}T${h}:00`, { zone: TIME_ZONE });
+    return dt.weekday !== 7;
   });
 
   return filtrados;
@@ -71,14 +71,14 @@ async function listarHorariosDisponiveis(data) {
  * @returns {Promise<object>} Dados do evento criado
  */
 async function criarAgendamento({ cliente, servicos, horario }) {
-  const inicio = new Date(horario);
-  const fim = new Date(inicio.getTime() + 30 * 60000);
+  const inicio = DateTime.fromISO(horario, { zone: TIME_ZONE });
+  const fim = inicio.plus({ minutes: 30 });
 
   const evento = {
     summary: `${servicos.join(", ")} - ${cliente}`,
     description: `Cliente: ${cliente}\nServiços: ${servicos.join(", ")}`,
-    start: { dateTime: inicio.toISOString(), timeZone: TIME_ZONE },
-    end: { dateTime: fim.toISOString(), timeZone: TIME_ZONE },
+    start: { dateTime: inicio.toISO(), timeZone: TIME_ZONE },
+    end: { dateTime: fim.toISO(), timeZone: TIME_ZONE },
   };
 
   const { data } = await calendar.events.insert({
