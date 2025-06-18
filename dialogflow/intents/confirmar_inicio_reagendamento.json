@@ -16,11 +16,11 @@
     }
   ],
   "inputContextNames": [
-    "aguardando_selecao_reagendamento"
+    "aguardando_reagendamento"
   ],
   "outputContexts": [
     {
-      "name": "aguardando_novo_horario",
+      "name": "aguardando_reagendamento",
       "lifespanCount": 5
     }
   ]
