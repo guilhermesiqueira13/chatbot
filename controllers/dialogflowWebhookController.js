@@ -382,17 +382,24 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
     return mensagens.NENHUM_REAGENDAMENTO;
   const idx = parseInt(msg) - 1;
   const ag = estado.agendamentos[idx];
-  if (!ag) return mensagens.NENHUM_REAGENDAMENTO;
+  if (!ag) {
+    const lista = estado.agendamentos
+      .map((a, i) => `${i + 1}. ${a.servico} em ${formatarDataHorarioBr(a.horario)}`)
+      .join('\n');
+    return `Opção inválida. Escolha um dos agendamentos abaixo:\n${lista}`;
+  }
   estado.agendamentoId = ag.id;
   estado.eventId = ag.google_event_id;
   estado.servico = ag.servico;
+  estado.horarioAtual = ag.horario;
   estado.confirmationStep = 'awaiting_reagendamento_data';
   setEstado(from, estado);
   const horarios = await listarTodosHorariosDisponiveis();
   const lista = horarios
     .map((h, i) => `${i + 1}. ${formatarDataHorarioBr(h.dia_horario)}`)
     .join('\n');
-  return `Escolha um novo horário:\n${lista}`;
+  return `Você está reagendando ${ag.servico} em ${formatarDataHorarioBr(ag.horario)}.` +
+    `\nEscolha um novo horário:\n${lista}`;
 }
 
 /** Recebe a nova data e hora para o reagendamento */
@@ -403,11 +410,16 @@ async function handleEscolhaDataHoraReagendamento({ from, msg }) {
   const horarios = await listarTodosHorariosDisponiveis();
   const idx = parseInt(msg) - 1;
   const h = horarios[idx];
-  if (!h) return mensagens.HORARIO_INVALIDO;
+  if (!h) {
+    const lista = horarios
+      .map((hr, i) => `${i + 1}. ${formatarDataHorarioBr(hr.dia_horario)}`)
+      .join('\n');
+    return `Horário inválido. Escolha um dos horários disponíveis:\n${lista}`;
+  }
   estado.novoHorario = h.dia_horario;
   estado.confirmationStep = 'awaiting_reagendamento_confirm';
   setEstado(from, estado);
-  return `Confirma reagendar para ${formatarDataHorarioBr(h.dia_horario)}?`;
+  return `Confirma reagendar ${estado.servico} para ${formatarDataHorarioBr(h.dia_horario)}?`;
 }
 
 /** Finaliza o reagendamento se confirmado */
@@ -427,7 +439,7 @@ async function handleConfirmarReagendamento({ from, msg }) {
   );
   agendamentosPendentes.delete(from);
   if (!result.success) return mensagens.ERRO_REAGENDAR;
-  return `✅ Agendamento reagendado com sucesso!`;
+  return `✅ Horário atualizado! ${estado.servico} agora está marcado para ${formatarDataHorarioBr(estado.novoHorario)}.`;
 }
 
 /** Fallback para intents não mapeadas */
