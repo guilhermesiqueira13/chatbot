@@ -148,3 +148,31 @@ Para que o bot reconheça a escolha de dias e horários de forma natural, inclua
 
 ### Confirmação e Feedback
 Ao final do fluxo o bot sempre envia uma mensagem de resumo com o serviço, data e horário confirmados. A resposta também lembra que você pode reagendar ou cancelar a qualquer momento respondendo **"Reagendar"** ou **"Cancelar"**. Os agendamentos somente são permitidos de segunda a sábado, das 09h às 18h.
+
+## Utilizando dias da semana
+
+Para converter um texto como "quinta" ou "amanhã" na data correta respeitando o fuso horário, use a função `getNextDateFromText`:
+
+```js
+const { getNextDateFromText } = require('./utils/dataHelpers');
+const { listarHorariosDisponiveis } = require('./services/calendarService');
+
+(async () => {
+  const data = getNextDateFromText('quinta');
+  if (data) {
+    const horarios = await listarHorariosDisponiveis(data);
+    console.log(data, horarios);
+  }
+})();
+```
+
+### Debug de timezone
+
+Verifique se o Node está utilizando o fuso correto:
+
+```js
+console.log('Sistema:', new Date().toString());
+console.log('S\u00e3o Paulo:', new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo' }).format(new Date()));
+```
+
+Se houver diverg\u00eancia, defina `TZ=America/Sao_Paulo` ao iniciar a aplica\u00e7\u00e3o.
