@@ -8,6 +8,6 @@
   ],
   "inputContextNames": [],
   "outputContexts": [
-    { "name": "aguardando_reagendamento", "lifespanCount": 5 }
+    { "name": "reagendamento_awaiting_datahora", "lifespanCount": 5 }
   ]
 }

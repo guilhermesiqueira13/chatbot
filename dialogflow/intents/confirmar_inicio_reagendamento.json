@@ -5,7 +5,9 @@
     { "type": "EXAMPLE", "parts": [ { "text": "1", "entityType": "@sys.number", "alias": "escolha" } ] },
     { "type": "EXAMPLE", "parts": [ { "text": "2", "entityType": "@sys.number", "alias": "escolha" } ] },
     { "type": "EXAMPLE", "parts": [ { "text": "3", "entityType": "@sys.number", "alias": "escolha" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "Quero a opção 4", "entityType": "@sys.number", "alias": "escolha" } ] }
+    { "type": "EXAMPLE", "parts": [ { "text": "Quero a opção 4", "entityType": "@sys.number", "alias": "escolha" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "sexta 10h" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "amanhã 14:00" } ] }
   ],
   "parameters": [
     {
@@ -16,11 +18,11 @@
     }
   ],
   "inputContextNames": [
-    "aguardando_reagendamento"
+    "reagendamento_awaiting_datahora"
   ],
   "outputContexts": [
     {
-      "name": "aguardando_reagendamento",
+      "name": "reagendamento_datahora_selected",
       "lifespanCount": 5
     }
   ]
