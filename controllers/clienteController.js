@@ -81,6 +81,32 @@ async function encontrarOuCriarCliente(telefone, profileName = "Cliente") {
   }
 }
 
+// Busca um cliente existente sem criar um novo registro
+async function buscarClientePorTelefone(telefone) {
+  const telefonePadronizado = padronizarTelefone(telefone);
+  const { error } = schemaTelefone.validate(telefonePadronizado);
+  if (error) {
+    throw new ValidationError(
+      "O número de telefone deve estar no formato +55DDDDDDDDDDD."
+    );
+  }
+  let client;
+  try {
+    client = await pool.getConnection();
+    const [rows] = await client.query(
+      "SELECT id, nome, telefone FROM clientes WHERE telefone = ?",
+      [telefonePadronizado]
+    );
+    if (rows.length === 0) return null;
+    return rows[0];
+  } catch (error) {
+    logger.error(null, error);
+    throw error;
+  } finally {
+    if (client) client.release();
+  }
+}
+
 // Atualiza o nome de um cliente existente.
 async function atualizarNomeCliente(clienteId, novoNome) {
   if (!isValidNome(novoNome)) {
@@ -122,4 +148,5 @@ module.exports = {
   encontrarOuCriarCliente,
   atualizarNomeCliente,
   padronizarTelefone,
+  buscarClientePorTelefone,
 };

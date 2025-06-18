@@ -13,6 +13,7 @@ const { normalizarServico } = require('../utils/stringHelpers');
 const {
   encontrarOuCriarCliente,
   atualizarNomeCliente,
+  buscarClientePorTelefone,
 } = require('./clienteController');
 const {
   agendarServico,
@@ -300,7 +301,10 @@ async function handleConfirmarAgendamento({ from }) {
 
 /** Lista agendamentos ativos para cancelamento */
 async function handleCancelamento({ from }) {
-  const agendamentos = (await listarAgendamentosAtivos(from)).filter(
+  const cliente = await buscarClientePorTelefone(from);
+  if (!cliente) return mensagens.CLIENTE_NAO_ENCONTRADO;
+
+  const agendamentos = (await listarAgendamentosAtivos(cliente.id)).filter(
     (a) => new Date(a.horario).getDay() !== 0,
   );
   if (!agendamentos.length) return mensagens.SEM_AGENDAMENTOS_CANCELAR;
@@ -310,6 +314,7 @@ async function handleCancelamento({ from }) {
   setEstado(from, {
     confirmationStep: 'awaiting_cancelar',
     agendamentos,
+    clienteId: cliente.id,
   });
   return `Qual agendamento deseja cancelar?\n${lista}`;
 }
@@ -339,7 +344,11 @@ async function handleConfirmarCancelamento({ from, msg }) {
     agendamentosPendentes.delete(from);
     return mensagens.CANCELAMENTO_NAO_CONFIRMADO;
   }
-  const result = await cancelarAgendamento(estado.agendamentoId, estado.eventId);
+  const result = await cancelarAgendamento(
+    estado.agendamentoId,
+    estado.eventId,
+    estado.clienteId
+  );
   agendamentosPendentes.delete(from);
   if (!result.success) return mensagens.ERRO_PROCESSAR_CANCELAMENTO;
   return `✅ Agendamento cancelado com sucesso!`;
@@ -348,7 +357,10 @@ async function handleConfirmarCancelamento({ from, msg }) {
 // Placeholders for reagendamento handlers to keep structure clear
 /** Inicia o fluxo de reagendamento */
 async function handleReagendar({ from }) {
-  const agendamentos = (await listarAgendamentosAtivos(from)).filter(
+  const cliente = await buscarClientePorTelefone(from);
+  if (!cliente) return mensagens.CLIENTE_NAO_ENCONTRADO;
+
+  const agendamentos = (await listarAgendamentosAtivos(cliente.id)).filter(
     (a) => new Date(a.horario).getDay() !== 0,
   );
   if (!agendamentos.length) return mensagens.SEM_AGENDAMENTOS_REAGENDAR;
@@ -358,6 +370,7 @@ async function handleReagendar({ from }) {
   setEstado(from, {
     confirmationStep: 'awaiting_reagendamento',
     agendamentos,
+    clienteId: cliente.id,
   });
   return `Qual deseja reagendar?\n${lista}`;
 }
@@ -410,6 +423,7 @@ async function handleConfirmarReagendamento({ from, msg }) {
     estado.agendamentoId,
     estado.novoHorario,
     estado.eventId,
+    estado.clienteId
   );
   agendamentosPendentes.delete(from);
   if (!result.success) return mensagens.ERRO_REAGENDAR;

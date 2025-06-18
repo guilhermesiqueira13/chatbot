@@ -8,18 +8,22 @@ const { isValidDataHora } = require("../utils/validation");
 const { ValidationError } = require("../utils/errors");
 const logger = require("../utils/logger");
 
-async function cancelarAgendamento(agendamentoId, googleEventId) {
+async function cancelarAgendamento(agendamentoId, googleEventId, clienteId = null) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
 
     let eventId = googleEventId;
     if (!eventId) {
-      const [agendamento] = await connection.query(
-        'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"',
-        [agendamentoId]
-      );
-
+      let query =
+        'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"';
+      const params = [agendamentoId];
+      if (clienteId) {
+        query += ' AND cliente_id = ?';
+        params.push(clienteId);
+      }
+      const [agendamento] = await connection.query(query, params);
+      
       if (!agendamento || agendamento.length === 0) {
         await connection.release();
         return {
@@ -37,7 +41,17 @@ async function cancelarAgendamento(agendamentoId, googleEventId) {
     logger.error(null, { message: 'Erro ao cancelar evento no Google Calendar: ' + (e.message || e), stack: e.stack });
   }
 
-    await connection.query('UPDATE agendamentos SET status = "cancelado" WHERE id = ?', [agendamentoId]);
+    if (clienteId) {
+      await connection.query(
+        'UPDATE agendamentos SET status = "cancelado" WHERE id = ? AND cliente_id = ?',
+        [agendamentoId, clienteId]
+      );
+    } else {
+      await connection.query(
+        'UPDATE agendamentos SET status = "cancelado" WHERE id = ?',
+        [agendamentoId]
+      );
+    }
 
     await connection.commit();
     await connection.release();
@@ -74,7 +88,7 @@ async function listarAgendamentosAtivos(clienteId) {
   }
 }
 
-async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
+async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId, clienteId = null) {
   if (!isValidDataHora(novoHorario)) {
     return {
       success: false,
@@ -87,10 +101,14 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
 
     let eventId = googleEventId;
     if (!eventId) {
-      const [agendamento] = await pool.query(
-        'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"',
-        [agendamentoId]
-      );
+      let query =
+        'SELECT google_event_id FROM agendamentos WHERE id = ? AND status = "ativo"';
+      const params = [agendamentoId];
+      if (clienteId) {
+        query += ' AND cliente_id = ?';
+        params.push(clienteId);
+      }
+      const [agendamento] = await pool.query(query, params);
       if (!agendamento.length) {
         await pool.query("ROLLBACK");
         return {
@@ -109,10 +127,17 @@ async function reagendarAgendamento(agendamentoId, novoHorario, googleEventId) {
 
     const evento = await criarAgendamento({ cliente: "", servico: "", horario: novoHorario });
 
-    await pool.query(
-      "UPDATE agendamentos SET google_event_id = ?, horario = ? WHERE id = ?",
-      [evento.id, novoHorario, agendamentoId]
-    );
+    if (clienteId) {
+      await pool.query(
+        "UPDATE agendamentos SET google_event_id = ?, horario = ? WHERE id = ? AND cliente_id = ?",
+        [evento.id, novoHorario, agendamentoId, clienteId]
+      );
+    } else {
+      await pool.query(
+        "UPDATE agendamentos SET google_event_id = ?, horario = ? WHERE id = ?",
+        [evento.id, novoHorario, agendamentoId]
+      );
+    }
 
     await pool.query("COMMIT");
     return { success: true };
