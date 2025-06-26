@@ -90,9 +90,11 @@ function parseEscolhaDia(input) {
   }
 
   const dias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-  const normalized = normText;
+  const normalized = normText.replace(/[-]/g, ' ').replace(/\s+feira$/, '');
   for (let i = 0; i < dias.length; i++) {
-    if (removeAccents(dias[i]).startsWith(normalized)) {
+    const diaNorm = removeAccents(dias[i]);
+    const inputNorm = removeAccents(normalized);
+    if (inputNorm === diaNorm || diaNorm.startsWith(inputNorm) || inputNorm.startsWith(diaNorm)) {
       return { type: 'weekday', value: i };
     }
   }

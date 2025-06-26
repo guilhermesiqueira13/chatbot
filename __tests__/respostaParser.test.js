@@ -42,6 +42,16 @@ describe('parseEscolhaDia', () => {
     expect(res).toEqual({ type: 'weekday', value: 5, next: true });
   });
 
+  test('entende grafias com hífen', () => {
+    const res = parseEscolhaDia('sexta-feira');
+    expect(res).toEqual({ type: 'weekday', value: 5 });
+  });
+
+  test('entende grafias com espaço', () => {
+    const res = parseEscolhaDia('quarta feira');
+    expect(res).toEqual({ type: 'weekday', value: 3 });
+  });
+
   test('reconhece indice numerico', () => {
     const res = parseEscolhaDia('2');
     expect(res).toEqual({ type: 'index', value: 1 });
