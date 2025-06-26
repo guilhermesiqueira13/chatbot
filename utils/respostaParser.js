@@ -69,7 +69,37 @@ const { formatarDataHorarioBr } = require('./dataHelpers');
 function parseEscolhaAgendamento(input, agendamentos) {
   if (!input || !Array.isArray(agendamentos)) return null;
   const texto = removeAccents(String(input).trim().toLowerCase());
-  const numero = parseInt(texto, 10);
+
+  let numero = parseInt(texto, 10);
+
+  if (isNaN(numero)) {
+    const ordinals = {
+      primeira: 1,
+      primeiro: 1,
+      segunda: 2,
+      segundo: 2,
+      terceira: 3,
+      terceiro: 3,
+      quarta: 4,
+      quarto: 4,
+      quinta: 5,
+      quinto: 5,
+      sexta: 6,
+      sexto: 6,
+      setima: 7,
+      setimo: 7,
+      oitava: 8,
+      oitavo: 8,
+      nona: 9,
+      nono: 9,
+      decima: 10,
+      decimo: 10,
+    };
+
+    const match = Object.keys(ordinals).find((w) => texto.includes(w));
+    if (match) numero = ordinals[match];
+  }
+
   if (!isNaN(numero)) return agendamentos[numero - 1] || null;
 
   return (

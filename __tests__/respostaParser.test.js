@@ -58,6 +58,11 @@ describe('parseEscolhaAgendamento', () => {
     expect(res).toEqual(ags[0]);
   });
 
+  test('seleciona por ordinal', () => {
+    const res = parseEscolhaAgendamento('segunda opção', ags);
+    expect(res).toEqual(ags[1]);
+  });
+
   test('seleciona por descricao', () => {
     const texto = `Barba ${formatarDataHorarioBr(ags[1].horario)}`;
     const res = parseEscolhaAgendamento(texto, ags);
