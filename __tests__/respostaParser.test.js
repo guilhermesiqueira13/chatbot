@@ -42,6 +42,11 @@ describe('parseEscolhaDia', () => {
     expect(res).toEqual({ type: 'weekday', value: 5, next: true });
   });
 
+  test('reconhece indice numerico', () => {
+    const res = parseEscolhaDia('2');
+    expect(res).toEqual({ type: 'index', value: 1 });
+  });
+
   test('retorna erro para entrada invalida', () => {
     const res = parseEscolhaDia('xyz');
     expect(res).toEqual({ type: 'invalid', error: DEFAULT_ERROR_MSG });

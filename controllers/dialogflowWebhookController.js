@@ -27,7 +27,7 @@ const {
 const mensagens = require('../utils/mensagensUsuario');
 const logger = require('../utils/logger');
 const { createResponse } = require('../utils/apiResponse');
-const { parseEscolhaDia, parseEscolhaAgendamento } = require('../utils/respostaParser');
+const { parseEscolhaDia, parseEscolhaAgendamento, removeAccents } = require('../utils/respostaParser');
 const {
   isValidNome,
   isValidServico,
@@ -446,20 +446,31 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
 
   if (estado.confirmationStep === 'awaiting_reagendamento_time' && !estado.novoDia) {
     let escolhido = null;
+    const diasDisp = estado.diasDisponiveis || {};
+    const diasKeys = Object.keys(diasDisp);
+
     let paramDate = parametros['date-time']?.stringValue || parametros.date?.stringValue;
     if (paramDate) {
       escolhido = String(paramDate).split('T')[0];
+    } else if (parametros.dia_semana?.stringValue) {
+      const dias = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+      const ds = parametros.dia_semana.stringValue.toLowerCase();
+      const idx = dias.findIndex((d) => removeAccents(d).startsWith(removeAccents(ds)));
+      if (idx >= 0) {
+        const possiveis = diasKeys.filter((d) => new Date(d).getDay() === idx);
+        if (possiveis.length) escolhido = possiveis[0];
+      }
     } else {
       const parsed = parseEscolhaDia(msg.toLowerCase());
-      const diasDisp = estado.diasDisponiveis || {};
-      const diasKeys = Object.keys(diasDisp);
       if (parsed.type === 'verMais') {
         estado.diaIndex += 6;
         const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
         setEstado(from, estado);
         return `Mais opções de dias:\n${listaDias}`;
       }
-      if (parsed.type === 'weekday') {
+      if (parsed.type === 'index') {
+        escolhido = diasKeys[parsed.value];
+      } else if (parsed.type === 'weekday') {
         const possiveis = diasKeys.filter((d) => new Date(d).getDay() === parsed.value);
         if (possiveis.length) {
           escolhido = parsed.next ? possiveis[1] || possiveis[0] : possiveis[0];
@@ -468,9 +479,6 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
         if (diasKeys.includes(parsed.value)) escolhido = parsed.value;
       }
     }
-
-    const diasDisp = estado.diasDisponiveis || {};
-    const diasKeys = Object.keys(diasDisp);
     if (!escolhido || !diasKeys.includes(escolhido)) {
       const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
       return `Dia inválido. Escolha um destes:\n${listaDias}`;

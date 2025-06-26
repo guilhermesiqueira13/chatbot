@@ -1,0 +1,8 @@
+[
+  { "value": "segunda-feira", "synonyms": ["segunda", "segunda-feira"] },
+  { "value": "terça-feira", "synonyms": ["terça", "terca", "terça-feira", "terca-feira"] },
+  { "value": "quarta-feira", "synonyms": ["quarta", "quarta-feira"] },
+  { "value": "quinta-feira", "synonyms": ["quinta", "quinta-feira"] },
+  { "value": "sexta-feira", "synonyms": ["sexta", "sexta-feira"] },
+  { "value": "sábado", "synonyms": ["sabado", "sábado"] }
+]
