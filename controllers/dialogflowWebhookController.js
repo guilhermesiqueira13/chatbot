@@ -34,6 +34,8 @@ const {
   isValidDataHora,
 } = require('../utils/validation');
 const { sendWhatsApp, waitForDelivery } = require('../services/twilioService');
+const { DateTime } = require('../utils/luxonShim');
+const TIME_ZONE = 'America/Sao_Paulo';
 
 const sessionClient = new dialogflow.SessionsClient({
   keyFilename: process.env.DIALOGFLOW_KEYFILE,
@@ -131,11 +133,13 @@ async function handleEscolhaServico({ from, parametros }) {
   const diasKeys = Object.keys(diasDisponiveis);
   if (!diasKeys.length) return mensagens.SEM_HORARIOS_DISPONIVEIS;
 
+  const diasListados = diasKeys.slice(0, 6);
   setEstado(from, {
     servico: servico.nome,
     servicoId: servico.id,
     diasDisponiveis,
     diaIndex: 0,
+    diasListados,
     confirmationStep: 'awaiting_day',
   });
 
@@ -156,6 +160,8 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
 
   const diasDisp = estado.diasDisponiveis || {};
   const diasKeys = Object.keys(diasDisp);
+  const diasListados =
+    estado.diasListados || diasKeys.slice(estado.diaIndex, estado.diaIndex + 6);
   logger.info(from, `Etapa ${estado.confirmationStep}`);
 
   if (estado.confirmationStep === 'awaiting_day') {
@@ -169,36 +175,48 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
       if (parsed.type === 'verMais') {
         estado.diaIndex += 6;
         const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+        estado.diasListados = Object.keys(diasDisp).slice(
+          estado.diaIndex,
+          estado.diaIndex + 6,
+        );
         setEstado(from, estado);
         return `Mais opções de dias:\n${listaDias}`;
       }
       if (parsed.type === 'weekday') {
         if (parsed.value === 0) {
           const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+          estado.diasListados = Object.keys(diasDisp).slice(
+            estado.diaIndex,
+            estado.diaIndex + 6,
+          );
+          setEstado(from, estado);
           return `${mensagens.DOMINGO_NAO_PERMITIDO}\nEscolha um dia disponível:\n${listaDias}`;
         }
-        const possiveis = diasKeys.filter(
-          (d) => new Date(d).getDay() === parsed.value,
+        const possiveis = diasListados.filter(
+          (d) =>
+            DateTime.fromISO(d, { zone: TIME_ZONE }).weekday % 7 === parsed.value,
         );
         if (possiveis.length) {
           escolhido = parsed.next ? possiveis[1] || possiveis[0] : possiveis[0];
         }
       } else if (parsed.type === 'date') {
-        if (new Date(parsed.value).getDay() === 0) {
+        if (
+          DateTime.fromISO(parsed.value, { zone: TIME_ZONE }).weekday % 7 === 0
+        ) {
           const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
           return `${mensagens.DOMINGO_NAO_PERMITIDO}\nEscolha um dia disponível:\n${listaDias}`;
         }
-        if (diasKeys.includes(parsed.value)) escolhido = parsed.value;
+        if (diasListados.includes(parsed.value)) escolhido = parsed.value;
       }
     }
 
-    if (!escolhido || !diasKeys.includes(escolhido)) {
+    if (!escolhido || !diasListados.includes(escolhido)) {
       const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
       let sugestao = '';
       try {
         const proximos = await listarTodosHorariosDisponiveis(14);
         const proximo = encontrarHorarioProximo(
-          `${escolhido || diasKeys[0]}T00:00:00`,
+          `${escolhido || diasListados[0]}T00:00:00`,
           proximos,
         );
         if (proximo) {
@@ -209,11 +227,23 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
       } catch (e) {
         logger.error(from, e);
       }
+      estado.diasListados = Object.keys(diasDisp).slice(
+        estado.diaIndex,
+        estado.diaIndex + 6,
+      );
+      setEstado(from, estado);
       return `Dia inválido.${sugestao}\nEscolha um destes:\n${listaDias}`;
     }
 
-    if (new Date(escolhido).getDay() === 0) {
+    if (
+      DateTime.fromISO(escolhido, { zone: TIME_ZONE }).weekday % 7 === 0
+    ) {
       const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+      estado.diasListados = Object.keys(diasDisp).slice(
+        estado.diaIndex,
+        estado.diaIndex + 6,
+      );
+      setEstado(from, estado);
       return `${mensagens.DOMINGO_NAO_PERMITIDO}\nEscolha um dia disponível:\n${listaDias}`;
     }
 
@@ -445,8 +475,12 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
   setEstado(from, estado);
   logger.info(from, `Reagendamento selecionado id=${ag.id} servico=${ag.servico}`);
   const listaDias = listarPrimeirosDias(estado.diasDisponiveis);
-  return `Você está reagendando ${ag.servico} em ${formatarDataHorarioBr(ag.horario)}.` +
-    `\nPara qual dia deseja remarcar?\n${listaDias}`;
+  estado.diasListados = Object.keys(estado.diasDisponiveis).slice(0, 6);
+  setEstado(from, estado);
+  return (
+    `Você está reagendando ${ag.servico} em ${formatarDataHorarioBr(ag.horario)}.` +
+    `\nPara qual dia deseja remarcar?\n${listaDias}`
+  );
 }
 
 /** Recebe a nova data e hora para o reagendamento */
@@ -458,6 +492,8 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
     let escolhido = null;
     const diasDisp = estado.diasDisponiveis || {};
     const diasKeys = Object.keys(diasDisp);
+    const diasListados =
+      estado.diasListados || diasKeys.slice(estado.diaIndex, estado.diaIndex + 6);
 
     let paramDate = parametros['date-time']?.stringValue || parametros.date?.stringValue;
     if (paramDate) {
@@ -467,7 +503,9 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
       const ds = parametros.dia_semana.stringValue.toLowerCase();
       const idx = dias.findIndex((d) => removeAccents(d).startsWith(removeAccents(ds)));
       if (idx >= 0) {
-        const possiveis = diasKeys.filter((d) => new Date(d).getDay() === idx);
+        const possiveis = diasListados.filter(
+          (d) => DateTime.fromISO(d, { zone: TIME_ZONE }).weekday % 7 === idx,
+        );
         if (possiveis.length) escolhido = possiveis[0];
       }
     } else {
@@ -475,22 +513,34 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
       if (parsed.type === 'verMais') {
         estado.diaIndex += 6;
         const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+        estado.diasListados = Object.keys(diasDisp).slice(
+          estado.diaIndex,
+          estado.diaIndex + 6,
+        );
         setEstado(from, estado);
         return `Mais opções de dias:\n${listaDias}`;
       }
       if (parsed.type === 'index') {
-        escolhido = diasKeys[parsed.value];
+        escolhido = diasListados[parsed.value];
       } else if (parsed.type === 'weekday') {
-        const possiveis = diasKeys.filter((d) => new Date(d).getDay() === parsed.value);
+        const possiveis = diasListados.filter(
+          (d) =>
+            DateTime.fromISO(d, { zone: TIME_ZONE }).weekday % 7 === parsed.value,
+        );
         if (possiveis.length) {
           escolhido = parsed.next ? possiveis[1] || possiveis[0] : possiveis[0];
         }
       } else if (parsed.type === 'date') {
-        if (diasKeys.includes(parsed.value)) escolhido = parsed.value;
+        if (diasListados.includes(parsed.value)) escolhido = parsed.value;
       }
     }
-    if (!escolhido || !diasKeys.includes(escolhido)) {
+    if (!escolhido || !diasListados.includes(escolhido)) {
       const listaDias = listarPrimeirosDias(diasDisp, estado.diaIndex);
+      estado.diasListados = Object.keys(diasDisp).slice(
+        estado.diaIndex,
+        estado.diaIndex + 6,
+      );
+      setEstado(from, estado);
       return `Dia inválido. Escolha um destes:\n${listaDias}`;
     }
 

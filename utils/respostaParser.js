@@ -1,4 +1,6 @@
 const DEFAULT_ERROR_MSG = "Desculpe, não entendi. Por favor, responda com o nome do dia, a data (ex: 20/06) ou digite 'Ver mais dias' para mais opções.";
+const { DateTime } = require('./luxonShim');
+const TIME_ZONE = 'America/Sao_Paulo';
 
 function removeAccents(str) {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -35,6 +37,9 @@ function parseOrdinal(text) {
   return map[first] || NaN;
 }
 
+const { DateTime } = require('./luxonShim');
+const TIME_ZONE = 'America/Sao_Paulo';
+
 function parseEscolhaDia(input) {
   if (!input || typeof input !== 'string') {
     return { type: 'invalid', error: DEFAULT_ERROR_MSG };
@@ -51,14 +56,13 @@ function parseEscolhaDia(input) {
   }
 
   if (text === 'hoje') {
-    const hoje = new Date();
-    return { type: 'date', value: hoje.toISOString().slice(0, 10) };
+    const hoje = DateTime.now().setZone(TIME_ZONE).toISODate();
+    return { type: 'date', value: hoje };
   }
 
   if (/^amanh[ãa]$/.test(normText)) {
-    const amanha = new Date();
-    amanha.setDate(amanha.getDate() + 1);
-    return { type: 'date', value: amanha.toISOString().slice(0, 10) };
+    const amanha = DateTime.now().setZone(TIME_ZONE).plus({ days: 1 }).toISODate();
+    return { type: 'date', value: amanha };
   }
 
   const proxMatch = normText.match(/^proxim[oa]?\s+(\w+)/);
@@ -83,7 +87,7 @@ function parseEscolhaDia(input) {
   const dataMatch = normText.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/);
   if (dataMatch) {
     let [, d, m, a] = dataMatch;
-    const year = a || String(new Date().getFullYear());
+    const year = a || String(DateTime.now().setZone(TIME_ZONE).year);
     d = d.padStart(2, '0');
     m = m.padStart(2, '0');
     return { type: 'date', value: `${year}-${m}-${d}` };
