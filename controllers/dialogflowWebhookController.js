@@ -615,8 +615,8 @@ const intentHandlers = {
   selecionar_cancelamento: handleSelecionarCancelamento,
   confirmar_cancelamento: handleConfirmarCancelamento,
   reagendar_agendamento: handleReagendar,
-  escolha_datahora_reagendamento: handleConfirmarInicioReagendamento,
-  confirmar_inicio_reagendamento: handleEscolhaDataHoraReagendamento,
+  confirmar_inicio_reagendamento: handleConfirmarInicioReagendamento,
+  escolha_datahora_reagendamento: handleEscolhaDataHoraReagendamento,
   confirmar_reagendamento: handleConfirmarReagendamento,
 };
 
