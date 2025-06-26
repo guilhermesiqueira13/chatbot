@@ -651,13 +651,23 @@ async function handleWebhook(req, res) {
     return res.json(createResponse(false, null, mensagens.ERRO_GERAL));
   }
 
-  const { intent, parameters, fulfillment, contexts } = await detectIntent(from, msg);
+  let { intent, parameters, fulfillment, contexts } = await detectIntent(from, msg);
   logger.dialogflow(intent, parameters);
   const estado = setEstado(from, {
     clienteId: cliente.id,
     nome: cliente.nome,
     telefone: cliente.telefone,
   });
+
+  if (
+    estado.confirmationStep === 'awaiting_reagendamento' &&
+    intent === 'default'
+  ) {
+    const ag = parseEscolhaAgendamento(msg, estado.agendamentos || []);
+    if (ag) {
+      intent = 'confirmar_inicio_reagendamento';
+    }
+  }
 
   if (!intentNoFluxo(intent, estado.fluxo)) {
     const respostaFluxo = await handleDefault({ from, fulfillment: '' });
