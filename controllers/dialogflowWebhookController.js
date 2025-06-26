@@ -409,14 +409,11 @@ async function handleReagendar({ from }) {
 }
 
 /** Confirma o agendamento a ser reagendado */
-async function handleConfirmarInicioReagendamento({ from, msg, contexts }) {
+async function handleConfirmarInicioReagendamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
-  if (
-    !estado ||
-    estado.confirmationStep !== 'awaiting_reagendamento' ||
-    (contexts && !contexts.includes('reagendamento_awaiting_datahora'))
-  )
+  if (!estado || estado.confirmationStep !== 'awaiting_reagendamento') {
     return mensagens.NENHUM_REAGENDAMENTO;
+  }
 
   const ag = parseEscolhaAgendamento(msg, estado.agendamentos);
   if (!ag) {
