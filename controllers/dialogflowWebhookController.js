@@ -79,12 +79,22 @@ const SERVICOS_VALIDOS = {
   'barba+corte': { id: 3, nome: 'Corte + Barba' },
 };
 
-async function detectIntent(from, text) {
+async function detectIntent(from, text, contextName) {
   const sessionPath = sessionClient.projectAgentSessionPath(projectId, from);
   const request = {
     session: sessionPath,
     queryInput: { text: { text, languageCode: 'pt-BR' } },
   };
+  if (contextName) {
+    const contextPath = sessionClient.projectAgentSessionContextPath(
+      projectId,
+      from,
+      contextName,
+    );
+    request.queryParams = {
+      contexts: [{ name: contextPath, lifespanCount: 5 }],
+    };
+  }
   const [response] = await sessionClient.detectIntent(request);
   const contexts = (response.queryResult.outputContexts || []).map((c) =>
     c.name.split('/').pop(),
@@ -656,9 +666,14 @@ async function handleWebhook(req, res) {
     return res.json(createResponse(false, null, mensagens.ERRO_GERAL));
   }
 
-  let { intent, parameters, fulfillment, contexts } = await detectIntent(from, msg);
+  const estado = getEstado(from);
+  let { intent, parameters, fulfillment, contexts } = await detectIntent(
+    from,
+    msg,
+    estado.contextoDialogflow,
+  );
   logger.dialogflow(intent, parameters);
-  const estado = setEstado(from, {
+  setEstado(from, {
     clienteId: cliente.id,
     nome: cliente.nome,
     telefone: cliente.telefone,
@@ -672,6 +687,13 @@ async function handleWebhook(req, res) {
     if (ag) {
       intent = 'confirmar_inicio_reagendamento';
     }
+  }
+
+  if (
+    estado.confirmationStep === 'awaiting_reagendamento_time' &&
+    intent === 'default'
+  ) {
+    intent = 'escolha_datahora_reagendamento';
   }
 
   if (!intentNoFluxo(intent, estado.fluxo)) {
