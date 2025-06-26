@@ -10,22 +10,20 @@ jest.mock('../controllers/clienteController', () => ({
 }));
 
 jest.mock('@google-cloud/dialogflow', () => {
+  const detectIntentMock = jest.fn();
   return {
+    __detectIntentMock: detectIntentMock,
     SessionsClient: jest.fn().mockImplementation(() => ({
       projectAgentSessionPath: jest.fn(() => 'path'),
-      detectIntent: jest.fn().mockResolvedValue([
-        {
-          queryResult: {
-            intent: { displayName: 'confirmar_inicio_reagendamento' },
-            parameters: { fields: {} },
-            fulfillmentText: '',
-            outputContexts: [ { name: 'projects/p/agent/sessions/sid/contexts/reagendamento_awaiting_datahora' } ],
-          },
-        },
-      ]),
+      detectIntent: detectIntentMock,
     })),
   };
 });
+const { __detectIntentMock: detectIntentMock } = require('@google-cloud/dialogflow');
+
+jest.mock('../controllers/gerenciamentoController', () => ({
+  reagendarAgendamento: jest.fn(),
+}));
 
 jest.mock('../services/calendarService', () => ({
   listarHorariosDisponiveis: jest.fn(() => Promise.resolve(['09:00'])),
@@ -40,6 +38,21 @@ describe('manual reagendamento via webhook', () => {
   beforeEach(() => {
     agendamentosPendentes.clear();
     jest.clearAllMocks();
+    detectIntentMock.mockResolvedValue([
+      {
+        queryResult: {
+          intent: { displayName: 'confirmar_inicio_reagendamento' },
+          parameters: { fields: {} },
+          fulfillmentText: '',
+          outputContexts: [
+            {
+              name:
+                'projects/p/agent/sessions/sid/contexts/reagendamento_awaiting_datahora',
+            },
+          ],
+        },
+      },
+    ]);
   });
 
   test('numero seleciona agendamento e avanca estado', async () => {
@@ -60,5 +73,39 @@ describe('manual reagendamento via webhook', () => {
     expect(require('../services/twilioService').sendWhatsApp).toHaveBeenCalled();
     const estado = agendamentosPendentes.get('user');
     expect(estado.confirmationStep).toBe('awaiting_reagendamento_time');
+  });
+
+  test('sim confirma reagendamento e limpa estado', async () => {
+    const { reagendarAgendamento } = require('../controllers/gerenciamentoController');
+    reagendarAgendamento.mockResolvedValue({ success: true });
+
+    agendamentosPendentes.set('user', {
+      fluxo: 'reagendamento',
+      confirmationStep: 'awaiting_reagendamento_confirm',
+      agendamentoId: 1,
+      novoHorario: '2030-01-02T09:00:00-03:00',
+      servico: 'Corte',
+      eventId: 'g1',
+      clienteId: 10,
+    });
+
+    detectIntentMock.mockResolvedValueOnce([
+      {
+        queryResult: {
+          intent: { displayName: 'confirmar_reagendamento' },
+          parameters: { fields: {} },
+          fulfillmentText: '',
+          outputContexts: [],
+        },
+      },
+    ]);
+
+    const req = { body: { Body: 'sim', From: 'user', ProfileName: 'Jose' } };
+    const res = { json: jest.fn(), status: jest.fn(() => res) };
+
+    await handleWebhook(req, res);
+
+    expect(reagendarAgendamento).toHaveBeenCalledWith(1, '2030-01-02T09:00:00-03:00', 'g1', 10);
+    expect(agendamentosPendentes.has('user')).toBe(false);
   });
 });
