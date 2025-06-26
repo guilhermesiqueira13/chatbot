@@ -499,6 +499,8 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
     if (!estado.horariosReagendamento.length) {
       return mensagens.SEM_HORARIOS_DISPONIVEIS;
     }
+    // Mantém o contexto ativo para a escolha do horário
+    estado.contextoDialogflow = 'reagendamento_datahora_selected';
     setEstado(from, estado);
     const lista = gerarMensagemHorarios(estado.horariosReagendamento);
     return `Horários disponíveis para ${formatarDiaBr(escolhido)}:\n${lista}`;
@@ -673,6 +675,13 @@ async function handleWebhook(req, res) {
     estado.contextoDialogflow,
   );
   logger.dialogflow(intent, parameters);
+  // Salva o contexto retornado pelo Dialogflow para manter o fluxo ativo
+  if (Array.isArray(contexts) && contexts.length) {
+    const ctxAtual = contexts.find((c) => /reagendamento|cancelamento/.test(c));
+    if (ctxAtual) {
+      setEstado(from, { contextoDialogflow: ctxAtual });
+    }
+  }
   setEstado(from, {
     clienteId: cliente.id,
     nome: cliente.nome,
