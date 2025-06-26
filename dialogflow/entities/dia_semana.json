@@ -1,0 +1,8 @@
+{
+  "id": "dia_semana",
+  "name": "dia_semana",
+  "isOverridable": true,
+  "isEnum": false,
+  "automatedExpansion": false,
+  "allowFuzzyExtraction": false
+}

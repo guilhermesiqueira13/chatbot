@@ -41,6 +41,11 @@ function parseEscolhaDia(input) {
   }
   const text = input.trim().toLowerCase();
   const normText = removeAccents(text);
+  const numMatch = normText.match(/^\d+$/);
+  if (numMatch) {
+    const idx = parseInt(numMatch[0], 10);
+    if (idx > 0) return { type: 'index', value: idx - 1 };
+  }
   if (text === 'ver mais dias') {
     return { type: 'verMais' };
   }
