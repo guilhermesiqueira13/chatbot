@@ -1,0 +1,30 @@
+{
+  "displayName": "escolha_datahora_reagendamento",
+  "priority": 500000,
+  "trainingPhrases": [
+    { "type": "EXAMPLE", "parts": [ { "text": "amanhã 15h" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "sexta 10:00" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "1", "entityType": "@sys.number", "alias": "opcao" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "2", "entityType": "@sys.number", "alias": "opcao" } ] }
+  ],
+  "parameters": [
+    {
+      "id": "date-time",
+      "entityType": "@sys.date-time",
+      "alias": "date-time",
+      "isList": false
+    },
+    {
+      "id": "time",
+      "entityType": "@sys.time",
+      "alias": "time",
+      "isList": false
+    }
+  ],
+  "inputContextNames": [
+    "reagendamento_datahora_selected"
+  ],
+  "outputContexts": [
+    { "name": "reagendamento_datahora_selected", "lifespanCount": 5 }
+  ]
+}
