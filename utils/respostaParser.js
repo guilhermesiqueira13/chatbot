@@ -4,6 +4,37 @@ function removeAccents(str) {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+function parseOrdinal(text) {
+  if (!text) return NaN;
+  const norm = removeAccents(String(text).trim().toLowerCase());
+  const numMatch = norm.match(/^(\d+)/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+  const map = {
+    primeiro: 1,
+    primeira: 1,
+    segundo: 2,
+    segunda: 2,
+    terceiro: 3,
+    terceira: 3,
+    quarto: 4,
+    quarta: 4,
+    quinto: 5,
+    quinta: 5,
+    sexto: 6,
+    sexta: 6,
+    setimo: 7,
+    setima: 7,
+    oitavo: 8,
+    oitava: 8,
+    nono: 9,
+    nona: 9,
+    decimo: 10,
+    decima: 10,
+  };
+  const first = norm.split(/\s+/)[0];
+  return map[first] || NaN;
+}
+
 function parseEscolhaDia(input) {
   if (!input || typeof input !== 'string') {
     return { type: 'invalid', error: DEFAULT_ERROR_MSG };
@@ -72,6 +103,9 @@ function parseEscolhaAgendamento(input, agendamentos) {
   const numero = parseInt(texto, 10);
   if (!isNaN(numero)) return agendamentos[numero - 1] || null;
 
+  const ord = parseOrdinal(texto);
+  if (!isNaN(ord)) return agendamentos[ord - 1] || null;
+
   return (
     agendamentos.find((a) => {
       const desc = removeAccents(
@@ -89,5 +123,6 @@ module.exports = {
   parseEscolhaDia,
   DEFAULT_ERROR_MSG,
   removeAccents,
+  parseOrdinal,
   parseEscolhaAgendamento,
 };

@@ -2,6 +2,7 @@ const {
   parseEscolhaDia,
   DEFAULT_ERROR_MSG,
   parseEscolhaAgendamento,
+  parseOrdinal,
 } = require('../utils/respostaParser');
 const { formatarDataHorarioBr } = require('../utils/dataHelpers');
 
@@ -67,5 +68,28 @@ describe('parseEscolhaAgendamento', () => {
   test('retorna null quando invalido', () => {
     const res = parseEscolhaAgendamento('Outro', ags);
     expect(res).toBeNull();
+  });
+
+  test('seleciona por ordinal escrito', () => {
+    const res = parseEscolhaAgendamento('primeiro', ags);
+    expect(res).toEqual(ags[0]);
+  });
+
+  test('seleciona por ordinal abreviado', () => {
+    const res = parseEscolhaAgendamento('2\u00aa', ags);
+    expect(res).toEqual(ags[1]);
+  });
+});
+
+describe('parseOrdinal', () => {
+  test('converte palavras e sufixos', () => {
+    expect(parseOrdinal('primeiro')).toBe(1);
+    expect(parseOrdinal('segunda')).toBe(2);
+    expect(parseOrdinal('3\u00ba')).toBe(3);
+    expect(parseOrdinal('4a')).toBe(4);
+  });
+
+  test('retorna NaN quando invalido', () => {
+    expect(parseOrdinal('vigésimo')).toBeNaN();
   });
 });
