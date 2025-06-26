@@ -33,6 +33,7 @@ const {
   isValidServico,
   isValidDataHora,
 } = require('../utils/validation');
+const { sendWhatsApp, waitForDelivery } = require('../services/twilioService');
 
 const sessionClient = new dialogflow.SessionsClient({
   keyFilename: process.env.DIALOGFLOW_KEYFILE,
@@ -673,7 +674,14 @@ async function handleWebhook(req, res) {
       resposta = await handleDefault({ from, fulfillment });
     }
     logger.bot(from, resposta);
-    res.json(createResponse(true, { reply: resposta }, null));
+    let mensagem;
+    try {
+      mensagem = await sendWhatsApp(from, resposta);
+      await waitForDelivery(mensagem.sid);
+    } catch (e) {
+      logger.error(from, e);
+    }
+    res.json(createResponse(true, { reply: resposta, sid: mensagem?.sid }, null));
   } catch (error) {
     logger.error(from, error);
     res.json(createResponse(false, null, mensagens.ERRO_GERAL));
