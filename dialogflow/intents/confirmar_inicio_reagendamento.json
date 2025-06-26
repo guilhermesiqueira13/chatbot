@@ -24,6 +24,10 @@
     {
       "name": "reagendamento_datahora_selected",
       "lifespanCount": 5
+    },
+    {
+      "name": "reagendamento_awaiting_datahora",
+      "lifespanCount": 0
     }
   ]
 }

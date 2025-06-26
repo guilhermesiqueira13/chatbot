@@ -529,6 +529,8 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
 
     estado.novoHorario = `${estado.novoDia}T${hora}:00`;
     estado.confirmationStep = 'awaiting_reagendamento_confirm';
+    // Mantém contexto específico até a confirmação do reagendamento
+    estado.contextoDialogflow = 'aguardando_confirmacao_reagendamento';
     setEstado(from, estado);
     return `Confirma reagendar ${estado.servico} para ${formatarDataHorarioBr(estado.novoHorario)}?`;
   }
