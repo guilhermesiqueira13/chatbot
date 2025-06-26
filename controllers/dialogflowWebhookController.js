@@ -757,6 +757,13 @@ async function handleWebhook(req, res) {
     intent = 'escolha_datahora_reagendamento';
   }
 
+  if (
+    estado.confirmationStep === 'awaiting_reagendamento_confirm' &&
+    intent === 'default'
+  ) {
+    intent = 'confirmar_reagendamento';
+  }
+
   if (!intentNoFluxo(intent, estado.fluxo)) {
     const respostaFluxo = await handleDefault({ from, fulfillment: '' });
     logger.bot(from, respostaFluxo);
