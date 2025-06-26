@@ -1,5 +1,5 @@
 const DEFAULT_ERROR_MSG = "Desculpe, não entendi. Por favor, responda com o nome do dia, a data (ex: 20/06) ou digite 'Ver mais dias' para mais opções.";
-const { DateTime } = require('./luxonShim');
+const { DateTime } = require('luxon');
 const TIME_ZONE = 'America/Sao_Paulo';
 
 function removeAccents(str) {
@@ -36,9 +36,6 @@ function parseOrdinal(text) {
   const first = norm.split(/\s+/)[0];
   return map[first] || NaN;
 }
-
-const { DateTime } = require('./luxonShim');
-const TIME_ZONE = 'America/Sao_Paulo';
 
 function parseEscolhaDia(input) {
   if (!input || typeof input !== 'string') {
