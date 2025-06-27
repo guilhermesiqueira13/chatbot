@@ -411,7 +411,7 @@ async function handleConfirmarCancelamento({ from, msg }) {
   const estado = agendamentosPendentes.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_cancel_confirm')
     return mensagens.NENHUM_CANCELAMENTO;
-  if (!/^sim/i.test(msg)) {
+  if (!/^(sim|ok|pode ser|confirmar|confirmado)/i.test(msg)) {
     agendamentosPendentes.delete(from);
     return mensagens.CANCELAMENTO_NAO_CONFIRMADO;
   }
@@ -594,7 +594,7 @@ async function handleConfirmarReagendamento({ from, msg }) {
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_confirm')
     return mensagens.NENHUM_REAGENDAMENTO;
   logger.info(from, `Confirmando reagendamento do servico ${estado.servico} para ${estado.novoHorario}`);
-  if (!/^sim/i.test(msg)) {
+  if (!/^(sim|ok|pode ser|confirmar|confirmado)/i.test(msg)) {
     agendamentosPendentes.delete(from);
     return mensagens.REAGENDAMENTO_CANCELADO;
   }
