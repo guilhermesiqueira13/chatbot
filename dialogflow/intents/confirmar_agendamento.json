@@ -1,0 +1,15 @@
+{
+  "displayName": "confirmar_agendamento",
+  "priority": 500000,
+  "trainingPhrases": [
+    { "type": "EXAMPLE", "parts": [ { "text": "sim" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "ok" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "pode ser" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "confirmar" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "confirmado" } ] }
+  ],
+  "inputContextNames": [
+    "aguardando_confirmacao_agendamento"
+  ],
+  "outputContexts": []
+}

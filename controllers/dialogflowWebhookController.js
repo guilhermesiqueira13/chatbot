@@ -314,6 +314,7 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
 
     estado.horarioEscolhido = hora;
     estado.confirmationStep = 'awaiting_confirm';
+    estado.contextoDialogflow = 'aguardando_confirmacao_agendamento';
     setEstado(from, estado);
 
     const resumo = formatarDataHorarioBr(`${estado.diaEscolhido}T${hora}:00`);
@@ -336,6 +337,7 @@ async function handleInformarNovoNome({ from, msg }) {
   if (clienteAtualizado) {
     estado.nome = clienteAtualizado.nome;
     estado.confirmationStep = 'awaiting_confirm';
+    estado.contextoDialogflow = 'aguardando_confirmacao_agendamento';
     setEstado(from, estado);
     return `Nome atualizado para *${nome}*. Confirma o agendamento?`;
   }
@@ -764,6 +766,13 @@ async function handleWebhook(req, res) {
     intent = 'confirmar_reagendamento';
   }
 
+  if (
+    estado.confirmationStep === 'awaiting_confirm' &&
+    intent === 'default'
+  ) {
+    intent = 'confirmar_agendamento';
+  }
+
   // Corrige casos em que o Dialogflow identifica erroneamente como
   // 'confirmar_inicio_reagendamento' na etapa final de confirmação
   if (
@@ -771,6 +780,13 @@ async function handleWebhook(req, res) {
     intent === 'confirmar_inicio_reagendamento'
   ) {
     intent = 'confirmar_reagendamento';
+  }
+
+  if (
+    estado.confirmationStep === 'awaiting_confirm' &&
+    (intent === 'confirmar_inicio_reagendamento' || intent === 'confirmar_reagendamento')
+  ) {
+    intent = 'confirmar_agendamento';
   }
 
   if (!intentNoFluxo(intent, estado.fluxo)) {
