@@ -42,7 +42,7 @@ const sessionClient = new dialogflow.SessionsClient({
 });
 const projectId = process.env.DIALOGFLOW_PROJECT_ID;
 
-const agendamentosPendentes = new Map();
+const sessionStore = require('../services/sessionStore');
 
 const FLUXO_INTENTS = {
   reagendamento: new Set([
@@ -59,13 +59,13 @@ const FLUXO_INTENTS = {
 };
 
 function getEstado(from) {
-  return agendamentosPendentes.get(from) || {};
+  return sessionStore.get(from) || {};
 }
 
 function setEstado(from, updates) {
-  const atual = agendamentosPendentes.get(from) || {};
+  const atual = sessionStore.get(from) || {};
   const novo = { ...atual, ...updates };
-  agendamentosPendentes.set(from, novo);
+  sessionStore.set(from, novo);
   return novo;
 }
 
@@ -116,7 +116,7 @@ function listarPrimeirosDias(diasMap, start = 0, count = 6) {
 
 /** Envia saudação inicial e reseta o estado do usuário */
 async function handleWelcome({ from }) {
-  agendamentosPendentes.delete(from);
+  sessionStore.del(from);
   return mensagens.BEM_VINDO;
 }
 
@@ -152,7 +152,7 @@ async function handleEscolhaServico({ from, parametros }) {
 
 /** Processa a escolha do dia e horário evitando domingos */
 async function handleEscolhaDataHora({ from, msg, parametros }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (!estado || !estado.servico) return mensagens.ESCOLHA_SERVICO_PRIMEIRO;
   logger.info(from, `handleEscolhaDataHora - step ${estado.confirmationStep} servico=${estado.servico}`);
   if (estado.confirmationStep === 'awaiting_reagendamento_time') {
@@ -332,9 +332,9 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
 
 /** Recebe o nome do cliente para atualização */
 async function handleInformarNovoNome({ from, msg }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_name') {
-    agendamentosPendentes.delete(from);
+    sessionStore.del(from);
     return mensagens.NAO_ESPERANDO_NOME;
   }
   const nome = msg.trim();
@@ -352,7 +352,7 @@ async function handleInformarNovoNome({ from, msg }) {
 
 /** Confirma o agendamento após validar dados obrigatórios */
 async function handleConfirmarAgendamento({ from }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_confirm')
     return mensagens.AGENDAMENTO_NAO_CONFIRMADO;
 
@@ -370,7 +370,7 @@ async function handleConfirmarAgendamento({ from }) {
     horario: `${estado.diaEscolhido}T${estado.horarioEscolhido}:00`,
   });
 
-  agendamentosPendentes.delete(from);
+  sessionStore.del(from);
 
   if (!result.success) return mensagens.ERRO_AGENDAR;
   return `✅ Agendamento confirmado para *${estado.servico}* em *${formatarDataHorarioBr(`${estado.diaEscolhido}T${estado.horarioEscolhido}:00`)}* no nome de *${estado.nome}*.` +
@@ -400,7 +400,7 @@ async function handleCancelamento({ from }) {
 
 /** Seleciona qual agendamento será cancelado */
 async function handleSelecionarCancelamento({ from, msg }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_cancelar')
     return mensagens.NENHUM_CANCELAMENTO;
   const idx = parseInt(msg) - 1;
@@ -416,11 +416,11 @@ async function handleSelecionarCancelamento({ from, msg }) {
 
 /** Confirma ou aborta o cancelamento escolhido */
 async function handleConfirmarCancelamento({ from, msg }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_cancel_confirm')
     return mensagens.NENHUM_CANCELAMENTO;
   if (!/^(sim|ok|pode ser|confirmar|confirmado)/i.test(msg)) {
-    agendamentosPendentes.delete(from);
+    sessionStore.del(from);
     return mensagens.CANCELAMENTO_NAO_CONFIRMADO;
   }
   const result = await cancelarAgendamento(
@@ -428,7 +428,7 @@ async function handleConfirmarCancelamento({ from, msg }) {
     estado.eventId,
     estado.clienteId
   );
-  agendamentosPendentes.delete(from);
+  sessionStore.del(from);
   if (!result.success) return mensagens.ERRO_PROCESSAR_CANCELAMENTO;
   return `✅ Agendamento cancelado com sucesso!`;
 }
@@ -459,7 +459,7 @@ async function handleReagendar({ from }) {
 
 /** Confirma o agendamento a ser reagendado */
 async function handleConfirmarInicioReagendamento({ from, msg }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento') {
     return mensagens.NENHUM_REAGENDAMENTO;
   }
@@ -494,7 +494,7 @@ async function handleConfirmarInicioReagendamento({ from, msg }) {
 
 /** Recebe a nova data e hora para o reagendamento */
 async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (!estado) return mensagens.NENHUM_REAGENDAMENTO;
 
   if (estado.confirmationStep === 'awaiting_reagendamento_time' && !estado.novoDia) {
@@ -603,12 +603,12 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
 
 /** Finaliza o reagendamento se confirmado */
 async function handleConfirmarReagendamento({ from, msg }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (!estado || estado.confirmationStep !== 'awaiting_reagendamento_confirm')
     return mensagens.NENHUM_REAGENDAMENTO;
   logger.info(from, `Confirmando reagendamento do servico ${estado.servico} para ${estado.novoHorario}`);
   if (!/^(sim|ok|pode ser|confirmar|confirmado)/i.test(msg)) {
-    agendamentosPendentes.delete(from);
+    sessionStore.del(from);
     return mensagens.REAGENDAMENTO_CANCELADO;
   }
   const result = await reagendarAgendamento(
@@ -617,14 +617,14 @@ async function handleConfirmarReagendamento({ from, msg }) {
     estado.eventId,
     estado.clienteId
   );
-  agendamentosPendentes.delete(from);
+  sessionStore.del(from);
   if (!result.success) return mensagens.ERRO_REAGENDAR;
   return `✅ Horário atualizado! ${estado.servico} agora está marcado para ${formatarDataHorarioBr(estado.novoHorario)}.`;
 }
 
 /** Fallback para intents não mapeadas */
 async function handleDefault({ from, fulfillment }) {
-  const estado = agendamentosPendentes.get(from);
+  const estado = sessionStore.get(from);
   if (estado) {
     switch (estado.confirmationStep) {
       case 'awaiting_day': {
@@ -713,13 +713,13 @@ async function handleWebhook(req, res) {
   logger.user(from, msg);
 
   const texto = (msg || '').trim().toLowerCase();
-  if (/^\d+$/.test(texto) && !agendamentosPendentes.has(from)) {
+  if (/^\d+$/.test(texto) && !sessionStore.has(from)) {
     const reply = mensagens.NAO_ENTENDI;
     logger.bot(from, reply);
     return res.json(createResponse(true, { reply }, null));
   }
   if (/^(cancelar|voltar|reiniciar)/.test(texto)) {
-    agendamentosPendentes.delete(from);
+    sessionStore.del(from);
     const respostaReinicio = await handleWelcome({ from });
     logger.bot(from, respostaReinicio);
     return res.json(createResponse(true, { reply: respostaReinicio }, null));
@@ -834,7 +834,7 @@ async function handleWebhook(req, res) {
 module.exports = {
   handleWebhook,
   __test: {
-    agendamentosPendentes,
+    sessionStore,
     handleConfirmarInicioReagendamento,
   },
 };
