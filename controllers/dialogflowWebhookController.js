@@ -141,6 +141,7 @@ async function handleEscolhaServico({ from, parametros }) {
     diaIndex: 0,
     diasListados,
     confirmationStep: 'awaiting_day',
+    contextoDialogflow: 'agendamento_awaiting_data',
   });
 
   logger.info(from, `Servico escolhido: ${servico.nome}`);
@@ -165,6 +166,8 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
   logger.info(from, `Etapa ${estado.confirmationStep}`);
 
   if (estado.confirmationStep === 'awaiting_day') {
+    estado.contextoDialogflow = 'agendamento_awaiting_data';
+    setEstado(from, estado);
     let escolhido = null;
 
     let paramDate = parametros['date-time']?.stringValue || parametros.date?.stringValue;
@@ -249,6 +252,7 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
 
     estado.diaEscolhido = escolhido;
     estado.confirmationStep = 'awaiting_time';
+    estado.contextoDialogflow = 'agendamento_awaiting_time';
     setEstado(from, estado);
 
     const horarios = gerarMensagemHorarios(diasDisp[escolhido]);
@@ -256,6 +260,8 @@ async function handleEscolhaDataHora({ from, msg, parametros }) {
   }
 
   if (estado.confirmationStep === 'awaiting_time') {
+    estado.contextoDialogflow = 'agendamento_awaiting_time';
+    setEstado(from, estado);
     const horariosDia = diasDisp[estado.diaEscolhido] || [];
     let hora = null;
 
@@ -445,6 +451,7 @@ async function handleReagendar({ from }) {
     confirmationStep: 'awaiting_reagendamento',
     agendamentos,
     clienteId: cliente.id,
+    contextoDialogflow: 'reagendamento_awaiting_datahora',
   });
   logger.info(from, `Listando ${agendamentos.length} agendamentos para reagendamento`);
   return `Qual deseja reagendar?\n${lista}`;
@@ -491,6 +498,8 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
   if (!estado) return mensagens.NENHUM_REAGENDAMENTO;
 
   if (estado.confirmationStep === 'awaiting_reagendamento_time' && !estado.novoDia) {
+    estado.contextoDialogflow = 'reagendamento_datahora_selected';
+    setEstado(from, estado);
     let escolhido = null;
     const diasDisp = estado.diasDisponiveis || {};
     const diasKeys = Object.keys(diasDisp);
@@ -559,6 +568,8 @@ async function handleEscolhaDataHoraReagendamento({ from, msg, parametros }) {
   }
 
   if (estado.confirmationStep === 'awaiting_reagendamento_time') {
+    estado.contextoDialogflow = 'reagendamento_datahora_selected';
+    setEstado(from, estado);
     const horariosDia = estado.horariosReagendamento || [];
     let hora = null;
     if (parametros['date-time']?.stringValue) {
@@ -731,7 +742,9 @@ async function handleWebhook(req, res) {
   logger.dialogflow(intent, parameters);
   // Salva o contexto retornado pelo Dialogflow para manter o fluxo ativo
   if (Array.isArray(contexts) && contexts.length) {
-    const ctxAtual = contexts.find((c) => /reagendamento|cancelamento/.test(c));
+    const ctxAtual = contexts.find((c) =>
+      /reagendamento|agendamento|cancelamento/.test(c)
+    );
     if (ctxAtual) {
       setEstado(from, { contextoDialogflow: ctxAtual });
     }
