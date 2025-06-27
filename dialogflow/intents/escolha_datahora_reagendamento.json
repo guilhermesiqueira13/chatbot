@@ -2,22 +2,154 @@
   "displayName": "escolha_datahora_reagendamento",
   "priority": 500000,
   "trainingPhrases": [
-    { "type": "EXAMPLE", "parts": [ { "text": "amanhã 15h" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "sexta 10:00" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "1", "entityType": "@sys.number", "alias": "opcao" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "2", "entityType": "@sys.number", "alias": "opcao" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "segunda" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "segunda-feira" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "terca" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "terça-feira" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "quarta" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "quarta-feira" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "quinta" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "quinta-feira" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "sexta" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "sexta-feira" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "sabado" } ] },
-    { "type": "EXAMPLE", "parts": [ { "text": "sábado" } ] }
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "amanhã 15h"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "sexta 10:00"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "1",
+          "entityType": "@sys.number",
+          "alias": "opcao"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "2",
+          "entityType": "@sys.number",
+          "alias": "opcao"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "segunda"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "segunda-feira"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "terca"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "terça-feira"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "quarta"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "quarta-feira"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "quinta"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "quinta-feira"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "sexta"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "sexta-feira"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "sabado"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "sábado"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "hoje"
+        }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "amanhã"
+        }
+      ]
+    }
   ],
   "parameters": [
     {
@@ -49,6 +181,9 @@
     "reagendamento_datahora_selected"
   ],
   "outputContexts": [
-    { "name": "reagendamento_datahora_selected", "lifespanCount": 5 }
+    {
+      "name": "reagendamento_datahora_selected",
+      "lifespanCount": 5
+    }
   ]
 }
