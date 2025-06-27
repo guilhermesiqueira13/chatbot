@@ -32,11 +32,11 @@ jest.mock('../services/calendarService', () => ({
 }));
 
 const { handleWebhook, __test } = require('../controllers/dialogflowWebhookController');
-const { sessionStore } = __test;
+const { agendamentosPendentes } = __test;
 
 describe('manual reagendamento via webhook', () => {
   beforeEach(() => {
-    Object.keys(sessionStore._store).forEach(k => delete sessionStore._store[k]);
+    agendamentosPendentes.clear();
     jest.clearAllMocks();
     detectIntentMock.mockResolvedValue([
       {
@@ -56,7 +56,7 @@ describe('manual reagendamento via webhook', () => {
   });
 
   test('numero seleciona agendamento e avanca estado', async () => {
-    sessionStore.set('user', {
+    agendamentosPendentes.set('user', {
       fluxo: 'reagendamento',
       confirmationStep: 'awaiting_reagendamento',
       agendamentos: [
@@ -71,7 +71,7 @@ describe('manual reagendamento via webhook', () => {
     await handleWebhook(req, res);
 
     expect(require('../services/twilioService').sendWhatsApp).toHaveBeenCalled();
-    const estado = sessionStore.get('user');
+    const estado = agendamentosPendentes.get('user');
     expect(estado.confirmationStep).toBe('awaiting_reagendamento_time');
   });
 
@@ -79,7 +79,7 @@ describe('manual reagendamento via webhook', () => {
     const { reagendarAgendamento } = require('../controllers/gerenciamentoController');
     reagendarAgendamento.mockResolvedValue({ success: true });
 
-    sessionStore.set('user', {
+    agendamentosPendentes.set('user', {
       fluxo: 'reagendamento',
       confirmationStep: 'awaiting_reagendamento_confirm',
       agendamentoId: 1,
@@ -106,14 +106,14 @@ describe('manual reagendamento via webhook', () => {
     await handleWebhook(req, res);
 
     expect(reagendarAgendamento).toHaveBeenCalledWith(1, '2030-01-02T09:00:00-03:00', 'g1', 10);
-    expect(sessionStore.has('user')).toBe(false);
+    expect(agendamentosPendentes.has('user')).toBe(false);
   });
 
   test('confirma reagendamento mesmo com intent incorreta', async () => {
     const { reagendarAgendamento } = require('../controllers/gerenciamentoController');
     reagendarAgendamento.mockResolvedValue({ success: true });
 
-    sessionStore.set('user', {
+    agendamentosPendentes.set('user', {
       fluxo: 'reagendamento',
       confirmationStep: 'awaiting_reagendamento_confirm',
       agendamentoId: 1,
@@ -140,6 +140,6 @@ describe('manual reagendamento via webhook', () => {
     await handleWebhook(req, res);
 
     expect(reagendarAgendamento).toHaveBeenCalledWith(1, '2030-01-02T09:00:00-03:00', 'g1', 10);
-    expect(sessionStore.has('user')).toBe(false);
+    expect(agendamentosPendentes.has('user')).toBe(false);
   });
 });
