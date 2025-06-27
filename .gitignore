@@ -3,3 +3,4 @@ reservai_twilio.json
 package-lock.json
 barbearia-calendar.json
 logs/
+sessionStore.json

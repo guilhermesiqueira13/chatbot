@@ -26,11 +26,11 @@ jest.mock('../controllers/agendamentoController', () => ({
 }));
 
 const { handleWebhook, __test } = require('../controllers/dialogflowWebhookController');
-const { agendamentosPendentes } = __test;
+const { sessionStore } = __test;
 
 describe('manual agendamento via webhook', () => {
   beforeEach(() => {
-    agendamentosPendentes.clear();
+    Object.keys(sessionStore._store).forEach(k => delete sessionStore._store[k]);
     jest.clearAllMocks();
     detectIntentMock.mockResolvedValue([
       {
@@ -48,7 +48,7 @@ describe('manual agendamento via webhook', () => {
     const { agendarServico } = require('../controllers/agendamentoController');
     agendarServico.mockResolvedValue({ success: true });
 
-    agendamentosPendentes.set('user', {
+    sessionStore.set('user', {
       confirmationStep: 'awaiting_confirm',
       servico: 'Corte',
       servicoId: 1,
@@ -63,14 +63,14 @@ describe('manual agendamento via webhook', () => {
     await handleWebhook(req, res);
 
     expect(agendarServico).toHaveBeenCalled();
-    expect(agendamentosPendentes.has('user')).toBe(false);
+    expect(sessionStore.has('user')).toBe(false);
   });
 
   test('confirma agendamento mesmo com intent incorreta', async () => {
     const { agendarServico } = require('../controllers/agendamentoController');
     agendarServico.mockResolvedValue({ success: true });
 
-    agendamentosPendentes.set('user', {
+    sessionStore.set('user', {
       confirmationStep: 'awaiting_confirm',
       servico: 'Corte',
       servicoId: 1,
@@ -96,6 +96,6 @@ describe('manual agendamento via webhook', () => {
     await handleWebhook(req, res);
 
     expect(agendarServico).toHaveBeenCalled();
-    expect(agendamentosPendentes.has('user')).toBe(false);
+    expect(sessionStore.has('user')).toBe(false);
   });
 });
