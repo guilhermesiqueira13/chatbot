@@ -108,4 +108,38 @@ describe('manual reagendamento via webhook', () => {
     expect(reagendarAgendamento).toHaveBeenCalledWith(1, '2030-01-02T09:00:00-03:00', 'g1', 10);
     expect(agendamentosPendentes.has('user')).toBe(false);
   });
+
+  test('confirma reagendamento mesmo com intent incorreta', async () => {
+    const { reagendarAgendamento } = require('../controllers/gerenciamentoController');
+    reagendarAgendamento.mockResolvedValue({ success: true });
+
+    agendamentosPendentes.set('user', {
+      fluxo: 'reagendamento',
+      confirmationStep: 'awaiting_reagendamento_confirm',
+      agendamentoId: 1,
+      novoHorario: '2030-01-02T09:00:00-03:00',
+      servico: 'Corte',
+      eventId: 'g1',
+      clienteId: 10,
+    });
+
+    detectIntentMock.mockResolvedValueOnce([
+      {
+        queryResult: {
+          intent: { displayName: 'confirmar_inicio_reagendamento' },
+          parameters: { fields: {} },
+          fulfillmentText: '',
+          outputContexts: [],
+        },
+      },
+    ]);
+
+    const req = { body: { Body: 'confirmar', From: 'user', ProfileName: 'Jose' } };
+    const res = { json: jest.fn(), status: jest.fn(() => res) };
+
+    await handleWebhook(req, res);
+
+    expect(reagendarAgendamento).toHaveBeenCalledWith(1, '2030-01-02T09:00:00-03:00', 'g1', 10);
+    expect(agendamentosPendentes.has('user')).toBe(false);
+  });
 });

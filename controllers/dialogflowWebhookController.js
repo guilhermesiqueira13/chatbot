@@ -764,6 +764,15 @@ async function handleWebhook(req, res) {
     intent = 'confirmar_reagendamento';
   }
 
+  // Corrige casos em que o Dialogflow identifica erroneamente como
+  // 'confirmar_inicio_reagendamento' na etapa final de confirmação
+  if (
+    estado.confirmationStep === 'awaiting_reagendamento_confirm' &&
+    intent === 'confirmar_inicio_reagendamento'
+  ) {
+    intent = 'confirmar_reagendamento';
+  }
+
   if (!intentNoFluxo(intent, estado.fluxo)) {
     const respostaFluxo = await handleDefault({ from, fulfillment: '' });
     logger.bot(from, respostaFluxo);
