@@ -1,0 +1,12 @@
+{
+  "displayName": "confirmar_reagendamento",
+  "priority": 500000,
+  "trainingPhrases": [
+    { "type": "EXAMPLE", "parts": [ { "text": "Sim" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "Confirmar" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "Não" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "Pode ser" } ] }
+  ],
+  "inputContextNames": ["aguardando_confirmacao_reagendamento"],
+  "outputContexts": []
+}

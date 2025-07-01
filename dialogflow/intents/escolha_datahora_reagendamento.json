@@ -1,0 +1,16 @@
+{
+  "displayName": "escolha_datahora_reagendamento",
+  "priority": 500000,
+  "trainingPhrases": [
+    { "type": "EXAMPLE", "parts": [ { "text": "segunda" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "terça" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "quarta" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "quinta" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "sexta" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "sábado" } ] }
+  ],
+  "inputContextNames": ["reagendamento_datahora_selected"],
+  "outputContexts": [
+    { "name": "aguardando_confirmacao_reagendamento", "lifespanCount": 5 }
+  ]
+}
