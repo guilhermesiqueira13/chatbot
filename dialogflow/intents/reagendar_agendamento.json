@@ -1,0 +1,13 @@
+{
+  "displayName": "reagendar_agendamento",
+  "priority": 500000,
+  "trainingPhrases": [
+    { "type": "EXAMPLE", "parts": [ { "text": "Quero reagendar" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "Preciso remarcar meu horário" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "Mudar horário" } ] }
+  ],
+  "inputContextNames": [],
+  "outputContexts": [
+    { "name": "reagendamento_awaiting_datahora", "lifespanCount": 5 }
+  ]
+}

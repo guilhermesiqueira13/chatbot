@@ -1,0 +1,51 @@
+{
+  "displayName": "confirmar_inicio_reagendamento",
+  "priority": 500000,
+  "trainingPhrases": [
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        { "text": "1", "entityType": "@sys.number", "alias": "escolha" }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        { "text": "2", "entityType": "@sys.number", "alias": "escolha" }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        { "text": "3", "entityType": "@sys.number", "alias": "escolha" }
+      ]
+    },
+    {
+      "type": "EXAMPLE",
+      "parts": [
+        {
+          "text": "Quero a opção 4",
+          "entityType": "@sys.number",
+          "alias": "escolha"
+        }
+      ]
+    },
+    { "type": "EXAMPLE", "parts": [{ "text": "sexta 10h" }] },
+    { "type": "EXAMPLE", "parts": [{ "text": "amanhã 14:00" }] }
+  ],
+  "parameters": [
+    {
+      "id": "escolha",
+      "entityType": "@sys.number",
+      "alias": "escolha",
+      "isList": false
+    }
+  ],
+  "inputContextNames": ["reagendamento_awaiting_datahora"],
+  "outputContexts": [
+    {
+      "name": "reagendamento_datahora_selected",
+      "lifespanCount": 5
+    }
+  ]
+}
