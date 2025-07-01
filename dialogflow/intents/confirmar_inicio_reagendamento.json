@@ -2,44 +2,16 @@
   "displayName": "confirmar_inicio_reagendamento",
   "priority": 500000,
   "trainingPhrases": [
-    {
-      "type": "EXAMPLE",
-      "parts": [
-        { "text": "1", "entityType": "@sys.number", "alias": "escolha" }
-      ]
-    },
-    {
-      "type": "EXAMPLE",
-      "parts": [
-        { "text": "2", "entityType": "@sys.number", "alias": "escolha" }
-      ]
-    },
-    {
-      "type": "EXAMPLE",
-      "parts": [
-        { "text": "3", "entityType": "@sys.number", "alias": "escolha" }
-      ]
-    },
-    {
-      "type": "EXAMPLE",
-      "parts": [
-        {
-          "text": "Quero a opção 4",
-          "entityType": "@sys.number",
-          "alias": "escolha"
-        }
-      ]
-    },
-    { "type": "EXAMPLE", "parts": [{ "text": "sexta 10h" }] },
-    { "type": "EXAMPLE", "parts": [{ "text": "amanhã 14:00" }] }
-  ],
-  "parameters": [
-    {
-      "id": "escolha",
-      "entityType": "@sys.number",
-      "alias": "escolha",
-      "isList": false
-    }
+    { "type": "EXAMPLE", "parts": [ { "text": "1" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "2" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "3" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "4" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "5" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "6" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "7" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "8" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "9" } ] },
+    { "type": "EXAMPLE", "parts": [ { "text": "10" } ] }
   ],
   "inputContextNames": ["reagendamento_awaiting_datahora"],
   "outputContexts": [
